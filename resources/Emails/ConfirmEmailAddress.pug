@@ -1,0 +1,8 @@
+html
+  head
+    include /meta.html
+    include /style.pug
+  body
+    h1 #{application_name} - #{datetime}
+    p(class='info-text') Please verify your login creation for email #{email} by clicking the following link;
+    a(class='input-link layout-cell' href=confirmation_url) Confirm Submission

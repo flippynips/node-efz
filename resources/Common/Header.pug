@@ -1,0 +1,16 @@
+div(class='title-bar')
+  -if(title)
+  h1(class='title-left') #{title}
+  -if(datetime)
+  h1(class='title-right') #{datetime}
+  ul(class='horizontal-list')
+    each route in menu
+      li(class='horizontal-list-item')
+        a(href=`${route.Path}`) #{route.MenuItem.Name}
+hr
+-if(description)
+p #{description}
+-if(errorStr)
+p(class='error-text') #{errorStr}
+-if(infoStr)
+p(class='info-text') #{infoStr}

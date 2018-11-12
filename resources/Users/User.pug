@@ -1,0 +1,74 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    
+    title #{title}
+    
+  body
+    include /../Common/Header.pug
+    div(class='layout-table')
+      div(class='layout-row')
+        p(class='layout-cell input-label') Email
+        p(class='layout-cell input-label') #{displayUser.Email}
+        p(class='layout-cell input-label') Created
+        p(class='layout-cell input-label') #{displayTimeCreated}
+      div(class='layout-row')
+        p(class='layout-cell input-label') State
+        p(class='layout-cell input-label') #{displayUserState}
+        p(class='layout-cell input-label') Last Seen
+        p(class='layout-cell input-label') #{displayTimeLastSeen}
+    -if(canUpdate) {
+    form(class='input-form' action=`/user/${displayUser.Email}/change_password` method='get')
+      input(class='layout-cell input-submit padding-med' type='submit' value='Change Password')
+    -}
+    //- start the admin form
+    -if(canAdmin) {
+    hr(class='margin-max')
+    form(class='input-form' action=`/user/${displayUser.Email}/update` method='post')
+      div(class='layout-table')
+        div(class='layout-row')
+          p(class='layout-cell input-label') User ID
+          p(class='layout-cell input-label') #{displayUser.Id}
+        div(class='layout-row')
+          p(class='layout-cell input-label') User State
+          select(class='layout-cell input-select margin-med' name='userState')
+            each userState in userStates
+              //- get whether the user state should be selected
+              -if(displayUser.State == userState.Value) {
+              option(selected) #{userState.Name}
+              -} else {
+              option() #{userState.Name}
+              -}
+        //- list each permission the user has
+        each permission in permissions
+          div(class='layout-row')
+            select(class='layout-cell input-select-horizontal center width-100 margin-min' multiple name=`access_${permission.Resource}`)
+              each accessType in accessTypes
+                //- get whether the access type should be selected
+                -if(permission.Access.findIndex((v) => { return v == accessType.Value; }) > -1) {
+                option(selected)
+                  span #{accessType.Name}
+                -} else {
+                option()
+                  span #{accessType.Name}
+                -}
+            p(class='layout-cell input-label') #{permission.Resource}
+        //- add permission area
+      div(class='layout-table')
+        div(class='layout-row')
+          select(class='layout-cell input-select-horizontal margin-med' multiple name=`newPermissionAccess`)
+            each accessType in accessTypes
+              option
+                span #{accessType.Name}
+          input(class='layout-cell input-text margin-min' type='text' name='newPermissionResource')
+          input(class='layout-cell input-submit padding-low margin-med' type='submit' name='action' value='Add')
+      //- add a metadata text box
+      textarea(class='input-text-area width-50' name='userMetadata') #{JSON.stringify(displayUser.Metadata, null, 2)}
+      div(class='layout-table')
+        div(class='layout-row')
+          input(class='layout-cell input-submit padding-med margin-min' type='submit' name='action' value='Update')
+          input(class='layout-cell input-submit padding-med margin-min' type='submit' name='action' value='Delete')
+    -}
+    include /../Common/Footer.pug

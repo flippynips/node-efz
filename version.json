@@ -1,0 +1,19 @@
+{
+  "baseversion": "0.1.#{buildCounter}",
+  "branches": [
+      {
+          "isDefault": "true",
+          "tag": "#{branchName}",
+          "trim": "feature-"
+      },
+      {
+          "match": "master",
+          "tag": ""
+      },
+      {
+          "match": "release[-/]*",
+          "tag": ""
+      }
+  ]
+}
+

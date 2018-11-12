@@ -1,0 +1,139 @@
+
+.input-label {
+  min-height: 20px;
+  padding: 2px 5px 2px 5px;
+  margin: 6px 0px;
+}
+
+.input-text {
+  background-color: var(--background-dark);
+  color: var(--foreground-light);
+  min-height: 20px;
+  padding: 0px 2px;
+}
+
+.input-text-disabled {
+  background-color: var(--background-light);
+  color: var(--foreground-light);
+  min-height: 20px;
+  padding: 0px 2px;
+}
+
+.input-text-area {
+  background-color: var(--background-dark);
+  color: var(--foreground-light);
+  min-height: 20px;
+  min-width: 100px;
+  height: 100px;
+  padding: 0px 2px;
+  resize: both;
+  display: block;
+}
+
+.input-number {
+  background-color: var(--background-dark);
+  color: var(--foreground-light);
+  min-height: 20px;
+  padding: 0px 2px;
+}
+
+.input-checkbox {
+  background-color: var(--background-dark);
+  color: var(--foreground-light);
+}
+
+.input-link {
+  color: var(--alternate-1-light);
+  min-height: 20px;
+}
+
+.input-submit {
+  color: var(--foreground-main);
+  background-color: var(--background-light);
+  font-family: inherit;
+  font-size: small;
+  font-weight: bold;
+}
+
+.input-button {
+  color: var(--foreground-main);
+  background-color: var(--background-light);
+  margin: 1px 6px;
+  font-family: inherit;
+  font-size: small;
+  font-weight: bold;
+}
+
+/* label with the appearance of a button */
+.input-label-button {
+  background-color: var(--background-light);
+  border: 2px outset #CCC;
+  text-align: center;
+}
+.input-label-button:active {
+  background-color: var(--background-main);
+  border: 2px inset #CCC;
+  text-align: center;
+}
+.input-label-button > label {
+  color: var(--foreground-main);
+  text-decoration: none;
+  font-family: inherit;
+  font-size: small;
+  font-weight: bold;
+  padding: 5px 5px;
+  display: block;
+}
+
+/* dropdown - horizontal and vertical */
+.input-select-horizontal {
+  background-color: var(--background-main);
+  white-space: normal;
+  border: none;
+  height: 19px;
+  overflow: hidden;
+}
+.input-select-horizontal > option {
+  color: var(--foreground-main);
+  -webkit-text-fill-color: var(--foreground-main);
+  background: linear-gradient(var(--background-dark), var(--background-dark));
+  display: inline-block;
+  -webkit-transition: all 0.2s ease;
+  -moz-transition: all 0.2s ease;
+  -o-transition: all 0.2s ease;
+  transition: all 0.2s ease;
+}
+.input-select-horizontal > option:focus,
+.input-select-horizontal > option:active,
+.input-select-horizontal > option:checked {
+  color: var(--foreground-main);
+  -webkit-text-fill-color: var(--foreground-main);
+  background: linear-gradient(var(--background-light), var(--background-light));
+  background-color: blue;
+}
+.input-select-horizontal > option:hover {
+  color: var(--foreground-light);
+  -webkit-text-fill-color: var(--foreground-light);
+  background: linear-gradient(var(--foreground-dark), var(--foreground-dark));
+}
+.input-select {
+  background-color: var(--background-dark);
+  color: var(--foreground-light);
+}
+.input-select > option {
+  color: var(--foreground-main);
+  -webkit-text-fill-color: var(--foreground-main);
+  background: linear-gradient(var(--background-dark), var(--background-dark));
+}
+.input-select > option:focus,
+.input-select > option:active,
+.input-select > option:checked {
+  color: var(--foreground-main);
+  -webkit-text-fill-color: var(--foreground-main);
+  background: linear-gradient(var(--background-light), var(--background-light));
+}
+.input-select > option:hover {
+  color: var(--foreground-light);
+  -webkit-text-fill-color: var(--foreground-light);
+  background: linear-gradient(var(--foreground-dark), var(--foreground-dark));
+}

@@ -1,0 +1,195 @@
+
+:root {
+  --background-main: #1e1f20;
+  --background-light: #383b3f;
+  --background-dark: #111111;
+  
+  --foreground-main: #BBBBBB;
+  --foreground-light: #CCCCCC;
+  --foreground-dark: #999999;
+  
+  --alternate-1-main: #005533;
+  --alternate-1-light: #55AA88;
+  --alternate-1-dark: #003311;
+  
+  --alternate-2-main: #005588;
+  --alternate-2-light: #5599DD;
+  --alternate-2-dark: #002266;
+  
+  --error-main: #CC3311;
+  --error-light: #FF6600;
+  --error-dark: #881100;
+  
+  --font-main: 'Raleway';
+}
+
+@font-face {
+  font-family: var(--font-main);
+  /* font license; https://www.fontsquirrel.com/license/raleway */
+  src: url('Public/Raleway.woff') format('woff');
+}
+
+
+body {
+  font-family: var(--font-main), Arial, sans-serif;
+  background-color: var(--background-main);
+  color: var(--foreground-main);
+}
+
+.title-bar {
+  height: 51px;
+  background-color: var(--background-light);
+}
+
+.title-left {
+  color: var(--foreground-dark);
+  padding: 7px 15px;
+  margin: 0px;
+  float: left;
+  min-width: 200px;
+}
+
+.title-right {
+  color: var(--foreground-dark);
+  font-size: 18px;
+  float: right;
+  padding: 15px 15px;
+  margin: 0px;
+}
+
+.inline {
+  display: inline-block;
+}
+
+.error-text {
+  color: var(--error-light);
+}
+
+.info-text {
+  color: var(--alternate-2-light);
+}
+
+.hidden {
+  display: none;
+}
+
+hr {
+  border-color: var(--alternate-2-main);
+  margin: 1px 0px 5px 0px;
+}
+
+/* ------------- SIZES ------------- */
+
+.width-100 {
+  width: 100%;
+}
+.width-95 {
+  width: 95%;
+}
+.width-90 {
+  width: 90%;
+}
+.width-80 {
+  width: 80%;
+}
+.width-60 {
+  width: 60%;
+}
+.width-50 {
+  width: 50%;
+}
+.width-40 {
+  width: 40%;
+}
+.width-20 {
+  width: 20%;
+}
+
+.height-100 {
+  height: 100%;
+}
+.height-95 {
+  height: 95%;
+}
+.height-90 {
+  height: 90%;
+}
+.height-80 {
+  height: 80%;
+}
+.height-60 {
+  height: 60%;
+}
+.height-50 {
+  height: 50%;
+}
+.height-40 {
+  height: 40%;
+}
+.height-20 {
+  height: 20%;
+}
+
+/* ------------- LAYOUT ------------- */
+
+.layout-table {
+  display: table;
+}
+.layout-row {
+  display : table-row;
+  /*align-items : center;*/
+}
+.layout-cell {
+  display: table-cell;
+  vertical-align: middle;
+}
+.center {
+  text-align: center;
+}
+
+/* ---------- Padding and Margins --------- */
+
+.padding-low {
+  padding: 2px 7px;
+}
+.padding-med {
+  padding: 5px 15px;
+}
+.padding-max {
+  padding: 10px 25px;
+}
+
+.margin-min {
+  margin: 2px 2px;
+}
+.margin-med {
+  margin: 5px 5px;
+}
+.margin-max {
+  margin: 10px 10px;
+}
+
+/* ---------- Horizontal Menu ----------- */
+
+.horizontal-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 4px 0px 4px 0px;
+  overflow: hidden;
+}
+
+.horizontal-list-item {
+  float: left;
+}
+
+.horizontal-list-item a {
+  display: block;
+  color: var(--foreground-light);
+  text-align: center;
+  padding: 12px 16px;
+  text-decoration: none;
+}
+
+.horizontal-list-item a:hover {
+  background-color: var(--background-main);
+}

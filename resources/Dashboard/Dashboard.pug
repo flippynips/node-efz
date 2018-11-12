@@ -1,0 +1,18 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    title #{title}
+  body
+    include /../Common/Header.pug
+    div(class='layour-table')
+      -if(canUpdateContent)
+      div(class='layout-row')
+        a(class='input-link layout-cell' href="/content") Manage Content
+        p(class='input-label layout-cell') Add, update and remove binary content.
+      -if(canUpdateApplication)
+      div(class='layout-row')
+        a(class='input-link layout-cell' href="/shutdown") Shutdown Application
+        p(class='input-label layout-cell') Shut down the application.
+    include /../Common/Footer.pug

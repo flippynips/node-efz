@@ -1,0 +1,61 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    title #{title}
+  body
+    include /../Common/Header.pug
+    -if(!displayContent || displayContent.length == 0) {
+    p(class='input-label') There is currently no content.
+    -} else {
+    each content in displayContent
+      div(class='layout-row')
+        p(class='layout-cell input-label') #{content.Name} v#{content.Version}
+        -if(content.CanDelete) {
+        form(class='layout-cell' action=`/content/remove?name=${content.Name}&version=${content.Version}` method='post')
+          input(class='input-submit padding-min margin-min' type='submit' value='Remove')
+        -}
+        form(class='layout-cell' action=`/content/${content.Name}?version=${content.Version}` target="_blank" method='post')
+          input(class='input-submit padding-min margin-min' type='submit' value='Download')
+        -if (content.Token) {
+        span(class='layout-cell input-label') Token
+        input(class='layout-cell input-text-disabled margin-med' type='text' readonly="readonly" value=`${content.Token}`)
+        form(class='layout-cell' action=`/content/token_remove?name=${content.Name}&version=${content.Version}` method='post')
+          input(class='input-submit' type='submit' value='⛌' style='padding: 0px 2px')
+        -} else if(content.CanUpdate) {
+        span(class='layout-cell input-label') Token
+        form(class='layout-cell' action=`/content/token_add?name=${content.Name}&version=${content.Version}` method='post')
+          input(class='input-submit' type='submit' value='Get API Token')
+        -}
+        -if(content.IsLatest && content.CanUpdate) {
+        form(class='layout-cell' action=`/content/update?name=${content.Name}` enctype='multipart/form-data' method='post')
+          div(class='layout-table')
+            div(class='layout-row')
+              input(class='layout-cell input-submit padding-min margin-med' type='submit' value='Update')
+              span(class='layout-cell input-label') Version
+              input(class='layout-cell input-number margin-med' type='number' name='version' requried value=`${content.Version+1}`)
+              div(class='inline input-label-button')
+                label(for=`content-update-${content.Name}-${content.Version}`) Choose File
+              input(class="hidden" id=`content-update-${content.Name}-${content.Version}` type='file' name='content' required)
+        -}
+    -}
+    -if(canCreateContent) {
+      h3 Add Content
+      form(action='/content/add' enctype='multipart/form-data' method='post')
+        div(class='layout-row')
+          p(class='layout-cell input-label') Name
+          input(class='layout-cell input-text width-95' type='text' name='name' required pattern=contentNameRegex)
+        div(class='layout-row')
+          p(class='layout-cell input-label') Version
+          input(class='layout-cell input-number width-95' type='number' name='version' required min='0' max='999999' step='1' value='0')
+        div(class='layout-row')
+          p(class='layout-cell input-label') File
+          div(class='layout-cell input-label-button')
+            label(for='content-add') Choose File
+          input(class="hidden" id='content-add' type='file' name='content' required)
+        div(class='layout-row')
+          div(class='layout-cell')
+          input(class='layout-cell input-submit width-90 padding-med margin-med' type='submit' value='Add')
+    -}
+    include /../Common/Footer.pug

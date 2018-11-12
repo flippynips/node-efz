@@ -1,0 +1,25 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    
+    title #{title}
+    
+  body
+    include /../Common/Header.pug
+    form(class='layout-table' action='/login' method='post')
+      div(class='layout-row')
+        p(class='input-label layout-cell') Email
+        input(class='input-text layout-cell margin-med' type='email' name='email' required)
+      div(class='layout-row')
+        p(class='input-label layout-cell') Password
+        input(class='input-text layout-cell margin-med' type='password' name='password' required)
+      div(class='layout-row')
+        div(class='layout-cell')
+        input(class='input-submit layout-cell padding-med margin-med width-95' type='submit' value='Login')
+      div(class='layout-row')
+        a(class='input-link layout-cell padding-med' href='/login/create') Create Login
+        a(class='input-link layout-cell padding-med' href='/login/reset_password') Forgotten Password
+  include /../Common/Footer.pug
+    

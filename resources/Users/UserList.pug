@@ -1,0 +1,26 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    
+    title #{title}
+    
+  body
+    include /../Common/Header.pug
+    div(class='layout-table')
+    each user in users
+      div(class='layout-row')
+        p(class='layout-cell input-label') #{user.Email}
+        p(class='layout-cell input-label') Created #{user.TimeCreated}
+        p(class='layout-cell input-label') Last Seen #{user.TimeLastSeen}
+        p(class='layout-cell input-label') State #{user.State}
+        -if(canUpdateUsers) {
+        form(class='layout-cell' action=`/user/${user.Email}` method='get')
+          input(class='input-submit padding-low' type='submit' value='Edit')
+        -}
+    -if(canCreateUsers) {
+    form(class='layout-row' action=`/users/create` method='get')
+      input(class='input-submit padding-med margin-med' type='submit' value='Add')
+    -}
+    include /../Common/Footer.pug

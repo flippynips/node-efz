@@ -1,0 +1,33 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    
+    title #{title}
+    
+  body
+    include /../Common/Header.pug
+    form(class='input-form' action=`/users/create` method='post')
+      div(class='layout-table')
+        div(class='layout-row')
+          p(class='layout-cell input-label') Email
+          input(class='layout-cell input-text margin-med' type='text' name='userEmail')
+          p(class='layout-cell input-label') Password
+          input(class='layout-cell input-text margin-med' type='text' name='userPassword')
+        div(class='layout-row')
+          p(class='layout-cell input-label') State
+          div(class='layout-cell center')
+            select(class='input-select width-95' name='userState')
+              each userState in userStates
+                option() #{userState.Name}
+          p(class='layout-cell input-label') Require Password Change
+          input(class='layout-cell input-checkbox margin-med' type='checkbox' name='userRequirePasswordChange')
+        div(class='layout-row')
+          p(class='layout-cell input-label') Set Standard Permissions
+          input(class='layout-cell input-checkbox margin-med' type='checkbox' name='userSetStandardPermissions' checked)
+          p(class='layout-cell input-label') Set Administrator Permissions
+          input(class='layout-cell input-checkbox margin-med' type='checkbox' name='userSetAdminPermissions')
+      textarea(class='input-text-area margin-max width-50' name='userMetadata') {}
+      input(class='input-submit padding-med margin-max' type='submit' value='Create')
+    include /../Common/Footer.pug

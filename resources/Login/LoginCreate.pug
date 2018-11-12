@@ -1,0 +1,24 @@
+doctype html
+html
+  head
+    include /meta.html
+    include /style.pug
+    
+    title #{title}
+    
+  body
+    include /../Common/Header.pug
+    form(action='/login/create'+(code ? '?code='+code : '') method='post')
+      div(class='layout-row')
+        p(class='input-label layout-cell') Email
+        input(class='input-text layout-cell margin-med' type='email' name='email' required)
+      div(class='layout-row')
+        p(class='input-label layout-cell') Password
+        input(class='input-text layout-cell margin-med' type='password' name='password_1' required pattern=password_regex title="Passwords must contain lowercase, uppercase, special and numerical characters and be between 6 and 20 characters in length.")
+      div(class='layout-row')
+        p(class='input-label layout-cell') Confirm Password
+        input(class='input-text layout-cell margin-med' type='password' name='password_2' required)
+      div(class='layout-row')
+        div(class='layout-cell')
+        input(class='input-submit layout-cell padding-med margin-med width-95' type='submit' value='Submit')
+    include /../Common/Footer.pug
