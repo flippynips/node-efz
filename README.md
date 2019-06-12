@@ -22,11 +22,11 @@ Promise.all([
   fs.createReadStream(filePath, { autoClose: true }),
   BlobStream.Create(Blobs, blobName),
 ])
-.then((values: [BlobStream, fs.ReadStream]) => {
+.then((streams: [BlobStream, fs.ReadStream]) => {
   // store some metadata describing the blob
-  values[0].Blob.Metadata = { 'mimetype': 'video/webm' };
+  streams[0].Blob.Metadata = { 'mimetype': 'video/webm' };
   // pipe the file to the blob
-  values[1].pipe(values[0]);
+  streams[1].pipe(streams[0]);
 });
 
 /* Blob to File */
