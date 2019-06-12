@@ -15,16 +15,14 @@ Blob Streaming
 ```typescript
 
 Promise.all([
-  BlobStream.Create(Blobs, 'Name of Blob'),
-  fs.createReadStream(path, { autoClose: true })
+  BlobStream.Create(Blobs, name),
+  fs.createReadStream('/some/path/to/file.webm', { autoClose: true })
 ])
 .then((values: [BlobStream, fs.ReadStream]) => {
-  // add some blob metadata
-  values[0].Blob.Metadata = { 'mimetype': mimetype };
-  // pipe file to blob - so easy!
-  values[1]
-  .on('end', values[0].Close)
-  .pipe(values[0], { end: true });
+  // store some metadata describing the blob
+  values[0].Blob.Metadata = { 'mimetype': 'video/webm' };
+  // pipe the file to the blob
+  values[1].pipe(values[0], { end: true });
 });
 
 ```
