@@ -14,15 +14,29 @@ Main features;
 Blob Streaming
 ```typescript
 
+let blobName = 'awesome blob';
+let filePath = '/some/path/to/file.webm';
+
+/* File to Blob */
 Promise.all([
-  BlobStream.Create(Blobs, name),
-  fs.createReadStream('/some/path/to/file.webm', { autoClose: true })
+  fs.createReadStream(filePath, { autoClose: true }),
+  BlobStream.Create(Blobs, blobName),
 ])
 .then((values: [BlobStream, fs.ReadStream]) => {
   // store some metadata describing the blob
   values[0].Blob.Metadata = { 'mimetype': 'video/webm' };
   // pipe the file to the blob
-  values[1].pipe(values[0], { end: true });
+  values[1].pipe(values[0]);
+});
+
+/* Blob to File */
+Promise.all([
+  BlobStream.Open(Blobs, blobName),
+  fs.createWriteStream(filePath, { autoClose: true })
+])
+.then((streams: [BlobStream, fs.WriteStream]) => {
+  // pipe to file - so easy!
+  streams[0].pipe(streams[1]);
 });
 
 ```
