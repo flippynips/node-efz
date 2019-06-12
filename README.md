@@ -8,9 +8,26 @@ Main features;
 - Web pages and content stored on the file-system is auto-updated.
 - Command-line handling that enables one-line subscription to user input.
 - Example routes include; login, create login, manage logins, manage content and a content download api endpoint secured by basic authentication.
+- Smooth, scalable and prioritized application start and end.
 
 ## Examples
-TODO
+Blob Streaming
+```typescript
+
+Promise.all([
+  BlobStream.Create(Blobs, 'Name of Blob'),
+  fs.createReadStream(path, { autoClose: true })
+])
+.then((values: [BlobStream, fs.ReadStream]) => {
+  // add some blob metadata
+  values[0].Blob.Metadata = { 'mimetype': mimetype };
+  // pipe file to blob - so easy!
+  values[1]
+  .on('end', values[0].Close)
+  .pipe(values[0], { end: true });
+});
+
+```
 
 ## EFZ - Efficient, Focused, Zen
 This codebase and the tools therein should be easy to understand, fast and easily extensible.
