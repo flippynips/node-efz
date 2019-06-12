@@ -24,9 +24,9 @@ Promise.all([
 ])
 .then((streams: [BlobStream, fs.ReadStream]) => {
   // store some metadata describing the blob
-  streams[0].Blob.Metadata = { 'mimetype': 'video/webm' };
+  streams[1].Blob.Metadata = { 'mimetype': 'video/webm' };
   // pipe the file to the blob
-  streams[1].pipe(streams[0]);
+  streams[0].pipe(streams[1]);
 });
 
 /* Blob to File */
