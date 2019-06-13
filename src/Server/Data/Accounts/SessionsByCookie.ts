@@ -9,10 +9,8 @@
 import * as uuid from 'uuid';
 
 import { ISession } from './Index';
-import { Table } from '../Table';
-import { Caches, Log, Time } from '../../Managers/Index';
-import { ColumnType } from '../ColumnType';
-import { Application } from '../../Application';
+import { Caches, Log, Time, Application } from '../../Managers/Index';
+import { Table, ColumnType } from '../Base/Index';
 
 /** Table of session information by cookie guid */
 class SessionsByCookieTable extends Table {
@@ -47,13 +45,14 @@ class SessionsByCookieTable extends Table {
       { Name: 'userid', DataType: 'ascii', ColumnType: ColumnType.DataColumn },
       { Name: 'metadata', DataType: 'text', ColumnType: ColumnType.DataColumn }
     ]);
+    
   }
   
-  /** Initialize the table */
+  /** Initialize the table. */
   public async Initialize(): Promise<void> {
-    super.Initialize();
-    // create a cache collection for the permissions
-    Caches.CreateCache<ISession>(SessionsByCookieTable.CacheKey, 600, 120, null, null, this.UpdateSession);
+    await super.Initialize();
+    // create a cache collection for the sessions
+    Caches.CreateCache<ISession>(SessionsByCookieTable.CacheKey, 600, 120, null, this.UpdateSession);
   }
   
   /** Get a session by cookie id. May throw if database access fails. */
@@ -95,7 +94,7 @@ class SessionsByCookieTable extends Table {
     };
     
     // try add the session to the cache
-    session = Caches.AddOrGet(SessionsByCookieTable.CacheKey, id, session);
+    session = Caches.SetOrGet(SessionsByCookieTable.CacheKey, id, session);
     
     // return the session
     return session;
@@ -128,7 +127,7 @@ class SessionsByCookieTable extends Table {
     };
     
     // append the session to the cache
-    session = await Caches.AddOrGet(SessionsByCookieTable.CacheKey, guid, session);
+    session = await Caches.SetOrGet(SessionsByCookieTable.CacheKey, guid, session);
     
     try {
       
@@ -181,7 +180,7 @@ class SessionsByCookieTable extends Table {
       
       if(Application.IsRunning) {
         // add the session back into the cache as a buffer
-        Caches.AddOrGet(SessionsByCookieTable.CacheKey, value.Id, value);
+        Caches.SetOrGet(SessionsByCookieTable.CacheKey, value.Id, value);
       }
       
     }

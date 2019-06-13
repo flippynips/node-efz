@@ -1,11 +1,8 @@
 
-export { IRoute } from '../IRoute';
-export { IMenuItem } from '../IMenuItem';
+import { Route } from '../Index';
 
-import { IRoute } from '../IRoute';
-
-import { Content } from './Content';
+import { Content as ContentRoutes } from './Content';
 
 /** Concatinate all API routes */
-export const All: IRoute[] = []
-  .concat(Content);
+export const Routes: Route[] = []
+  .concat(ContentRoutes);

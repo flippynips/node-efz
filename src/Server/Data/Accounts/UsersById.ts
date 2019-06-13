@@ -6,15 +6,10 @@
  ******************************************************/
 
 import * as uuid from 'uuid';
-import * as http from 'http';
 
 import { IUser, UserState } from './Index';
-import { AccessType } from '../../Tools/Index';
-import { Table } from '../Table';
-import { Caches, Log, Server } from '../../Managers/Index';
-import { ColumnType } from '../ColumnType';
-import { PermissionsByUser } from './Index';
-import { Application } from '../../Application';
+import { Table, ColumnType } from '../Base/Index';
+import { Caches, Log, Application } from '../../Managers/Index';
 
 /** Table of session information by cookie guid */
 class UsersByIdTable extends Table {
@@ -38,15 +33,13 @@ class UsersByIdTable extends Table {
       { Name: 'timelastseen', DataType: 'int', ColumnType: ColumnType.DataColumn },
       { Name: 'metadata', DataType: 'text', ColumnType: ColumnType.DataColumn }
     ]);
-    
-    
   }
   
-  /** Initialize the table */
+  /** Initialize the table. */
   public async Initialize(): Promise<void> {
-    super.Initialize();
-    // create a cache collection for the permissions
-    Caches.CreateCache<IUser>(UsersByIdTable.CacheKey, 60, 20, null, null, this.UpdateUserInner);
+    await super.Initialize();
+    // create a cache collection for the users
+    Caches.CreateCache<IUser>(UsersByIdTable.CacheKey, 60, 20, null, this.UpdateUserInner);
   }
   
   /** Get a session by cookie id. May throw if database access fails. */
@@ -88,7 +81,7 @@ class UsersByIdTable extends Table {
     };
     
     // try add the session to the cache
-    user = Caches.AddOrGet(UsersByIdTable.CacheKey, id, user);
+    user = Caches.SetOrGet(UsersByIdTable.CacheKey, id, user);
     
     // return the session
     return user;
@@ -114,7 +107,7 @@ class UsersByIdTable extends Table {
     };
     
     // append the session to the cache
-    user = await Caches.AddOrGet(UsersByIdTable.CacheKey, guid, user);
+    user = await Caches.SetOrGet(UsersByIdTable.CacheKey, guid, user);
     
     // return the new user
     return user;
@@ -150,7 +143,7 @@ class UsersByIdTable extends Table {
   public async GetAllUsers(): Promise<IUser[]> {
     
     // get all from the cache
-    let users: IUser[] = Caches.GetAll(UsersByIdTable.CacheKey);
+    let users = Caches.GetAll<IUser>(UsersByIdTable.CacheKey).map(v => v.value);
     
     // iterate rows
     for(let row of await this.Select('userid, email, state, timecreated, timelastseen, metadata')) {
@@ -175,7 +168,7 @@ class UsersByIdTable extends Table {
       };
       
       // add to or get from the cache
-      user = Caches.AddOrGet(UsersByIdTable.CacheKey, user.Id, user);
+      user = Caches.SetOrGet(UsersByIdTable.CacheKey, user.Id, user);
       
       // append the user to the result collection
       users.push(user);
@@ -214,7 +207,7 @@ class UsersByIdTable extends Table {
       
       if(Application.IsRunning && value) {
         // add the session back into the cache as a buffer
-        Caches.AddOrGet(UsersByIdTable.CacheKey, value.Id, value);
+        Caches.SetOrGet(UsersByIdTable.CacheKey, value.Id, value);
       }
       
     }

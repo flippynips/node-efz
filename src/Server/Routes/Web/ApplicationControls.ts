@@ -7,14 +7,14 @@
 
 import * as express from 'express';
 
-import { HttpMethod, AccessType } from '../../Tools/Index';
-import { IRoute } from '../IRoute';
+import { Http, AccessType } from '../../Tools/Index';
+import { Route } from '../Route';
 import { AuthorizePrivate } from '../Middlewares/Index';
-import { Application } from '../../Application';
+import { Application } from '../../Managers/Index';
 
 /** Shutdown */
-const Shutdown: IRoute = {
-  Method: HttpMethod.Get,
+const Shutdown: Route = {
+  Method: Http.Method.Get,
   Path: '/shutdown',
   Effects: [
     AuthorizePrivate(AccessType.Update, 'application'),
@@ -31,6 +31,6 @@ const Shutdown: IRoute = {
 };
 
 /** Collection of 'application control' routes */
-export const ApplicationControls: IRoute[] = [
+export const ApplicationControls: Route[] = [
   Shutdown
 ];

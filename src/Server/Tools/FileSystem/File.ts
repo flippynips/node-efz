@@ -11,9 +11,14 @@ import * as pug from 'pug';
 
 import { Folder } from './Index';
 import { Log } from '../../Managers/Index';
+import { EventEmitter } from 'events';
 
-/** Class representing a watchable file */
-export class File {
+/** Class representing a watchable file.
+ * Emits :
+ * - 'dispose(this: File)'.
+ * - 'change(this: File, event: string)'.
+ */
+export class File extends EventEmitter {
   
   //-----------------------------------------//
   
@@ -35,13 +40,11 @@ export class File {
   /** Compiled pug template */
   private _template: pug.compileTemplate;
   
-  /** Optional callback on the watched file changed */
-  private _onChange: (file: File, event: string) => void;
-  
   //-----------------------------------------//
   
   /** Create a new file representation */
-  public constructor(parent: Folder, path: string, encoding: string = 'utf8', onChange?: (file: File, event: string) => void) {
+  public constructor(parent: Folder, path: string, encoding: string = 'utf8') {
+    super();
     
     this.Parent = parent;
     this.Path = path;
@@ -52,8 +55,6 @@ export class File {
     this._watcher.on('rename', this.OnEvent);
     this._watcher.on('error', this.OnError);
     
-    this._onChange = onChange;
-    
   }
   
   /** Dispose of the file watcher */
@@ -61,11 +62,26 @@ export class File {
     
     this._watcher.close();
     
+    this.emit('dispose', this);
+    
     delete this._bytes;
     delete this.Parent;
     delete this.Path;
     delete this._watcher;
     delete this._template;
+    
+  }
+  
+  /** Refresh filesystem watcher. */
+  public RefreshListeners() {
+    
+    this._watcher.close();
+    
+    // watch for changes to the folder
+    this._watcher = fs.watch(this.Path, { recursive: false, persistent: false });
+    this._watcher.on('change', this.OnEvent);
+    this._watcher.on('rename', this.OnEvent)
+    this._watcher.on('error', this.OnError);
     
   }
   
@@ -112,14 +128,17 @@ export class File {
   
   /** Callback on the file updating */
   private OnEvent = (event: string, filename: string): void => {
-    if(this.Parent) this.Parent.Refresh();
-    if(this._onChange) this._onChange(this, event);
+    if(event === 'change') delete this._bytes;
+    if(this.Parent) this.Parent.Refresh(null, [ this.Path ]);
+    this.emit('change', this, event)
   }
   
   /** On an FSWatch error */
   private OnError = (error: Error) => {
-    if(this.Parent) this.Parent.Refresh();
-    if(this._onChange) this._onChange(this, 'error');
+    
+    if(this.Parent) this.Parent.Refresh(null, [ this.Path ]);
+    this.emit('change', this, 'error');
+    
   }
   
   /** Read the file asynchronously */
@@ -136,8 +155,11 @@ export class File {
             }
           });
       })
+      .then(() => {
+        // do nothing
+      })
       .catch((error) => {
-        Log.Error(`There was an error reading file '${self.Path}'. ${error}`);
+        Log.Error(`There was an error reading file '${self.Path}'. ${error.stack || error}`);
       });
   }
   

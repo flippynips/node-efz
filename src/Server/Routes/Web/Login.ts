@@ -8,35 +8,38 @@
 
 import * as express from 'express';
 
-import { HttpMethod, AccessType, ApplicationName, IsNullOrEmpty, TimeoutController } from '../../Tools/Index';
+import { Http, AccessType, IsNullOrEmpty, TimeoutController } from '../../Tools/Index';
 import { ISession, IUser, UserState, Access } from '../../Data/Accounts/Index';
 import { RequestError, RequestErrorType } from '../../Tools/Errors/Index';
-import { IRoute } from '../IRoute';
-import { Log, Email, Resources, Server, Crypto, Time } from '../../Managers/Index';
+import { Route } from '../Route';
+import { Log, Email, Resources, Server, Crypto, Time, Application } from '../../Managers/Index';
 import { AuthorizePublic, WebErrorHandling, AuthorizePrivate, HandleAsyncErrors } from '../Middlewares/Index';
 import { SessionsByCookie, UsersByEmail, UsersById, PermissionsByUser } from '../../Data/Accounts/Index';
+import { NetHelper, DataHelper } from '../Index';
+
+DataHelper.Menu.Add({
+  Name: 'Login',
+  Path: '/login',
+  Predicate: (req, res): boolean => { return !res.locals || !res.locals.User; },
+  Priority: -1
+});
 
 /** Get the login page */
-const LoginPageGet: IRoute = {
+const LoginPageGet: Route = {
   Path: '/login',
-  Method: HttpMethod.Get,
-  MenuItem: {
-    Name: 'Login',
-    Predicate: (req, res): boolean => { return !res.locals || !res.locals.User; },
-    Priority: -1
-  },
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
       
       // get the endpoint struct if created
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       let page = await Resources.GetPage('Login/Login.pug', {
         "title": 'Log In',
         "datetime": new Date().toDateString(),
         "description": 'Log in to access your dashboard.',
-        "menu": await Server.GetMenu(req, res),
+        "menu": await DataHelper.Menu.Get(req, res),
         "errorStr": endPointStruct.errorStr,
         "infoStr": endPointStruct.infoStr
       });
@@ -54,9 +57,9 @@ const LoginPageGet: IRoute = {
 };
 
 /** Login form submission */
-const LoginPost: IRoute = {
+const LoginPost: Route = {
   Path: '/login',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -68,7 +71,7 @@ const LoginPost: IRoute = {
       if(req.body == null) {
         // no, invalid
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received during login request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received during login request from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
@@ -83,7 +86,7 @@ const LoginPost: IRoute = {
         
         // invalid form data
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received during login request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received during login request from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser. Please try again.`));
         return;
         
@@ -105,7 +108,7 @@ const LoginPost: IRoute = {
           
           if(++loginAttempts > Server.Configuration.LoginAttemptLimit) {
             next(new RequestError(RequestErrorType.Authentication,
-              `Too many login attempts from ${Server.GetIpEndPoint(req)}.`,
+              `Too many login attempts from ${NetHelper.GetEndPointString(req)}.`,
               `Too many login attempts.`));
             return;
           }
@@ -166,7 +169,7 @@ const LoginPost: IRoute = {
       // does the user need to change their password?
       if(user.Metadata && user.Metadata.RequirePasswordChange) {
         // redirect to the change password page
-        let endPointStruct: any = Server.GetEndpointStruct(req);
+        let endPointStruct: any = Server.GetEndPointStruct(req);
         endPointStruct.infoStr = `Password change required.`;
         res.redirect(`/user/${user.Email}/change_password`);
         return;
@@ -181,15 +184,15 @@ const LoginPost: IRoute = {
 };
 
 /** Get the create login page */
-const LoginCreatePageGet: IRoute = {
+const LoginCreatePageGet: Route = {
   Path: '/login/create',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       
       // get the error string if set
-      var endPointStruct: any = Server.GetEndpointStruct(req);
+      var endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the login creation page
       let page = await Resources.GetPage('Login/LoginCreate.pug', {
@@ -198,8 +201,8 @@ const LoginCreatePageGet: IRoute = {
         "description": 'Create a new log in account.',
         "errorStr": endPointStruct.errorStr,
         "infoStr": endPointStruct.infoStr,
-        "menu": await Server.GetMenu(req, res),
-        "password_regex": Server.Configuration.PasswordRegexStr,
+        "menu": await DataHelper.Menu.Get(req, res),
+        "password_regex": DataHelper.PasswordRegex,
         "code": req.query['code'] == Server.Configuration.AdminCode ? Server.Configuration.AdminCode : null
       });
       
@@ -216,9 +219,9 @@ const LoginCreatePageGet: IRoute = {
 };
 
 /** Login create form submission */
-const LoginCreatePost: IRoute = {
+const LoginCreatePost: Route = {
   Path: '/login/create',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -235,7 +238,7 @@ const LoginCreatePost: IRoute = {
       // is there a request body?
       if(req.body == null) {
         // no, invalid
-        next(new RequestError(RequestErrorType.Validation, `Invalid form submission from ${Server.GetIpEndPoint(req)}`, 'We received invalid information from your browser. Please try again.'));
+        next(new RequestError(RequestErrorType.Validation, `Invalid form submission from ${NetHelper.GetEndPointString(req)}`, 'We received invalid information from your browser. Please try again.'));
         return;
       }
       
@@ -251,11 +254,11 @@ const LoginCreatePost: IRoute = {
          typeof email !== 'string' ||
          typeof password1 !== 'string' ||
          typeof password2 !== 'string'||
-         !Server.PasswordRegex.test(password1)) {
+         !/[A-Za-z0-9@$!%*?&# ()+=_\/\\-]{6,30}/.test(password1)) {
         
         // invalid form data
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid form submission from ${Server.GetIpEndPoint(req)}`,
+          `Invalid form submission from ${NetHelper.GetEndPointString(req)}`,
           'We received invalid information from your browser. Please try again.'));
         return;
         
@@ -264,7 +267,7 @@ const LoginCreatePost: IRoute = {
       // validate the passwords
       if(password1 !== password2) {
         next(new RequestError(RequestErrorType.Validation,
-          `Caught password mismatch from ${Server.GetIpEndPoint(req)}.`,
+          `Caught password mismatch from ${NetHelper.GetEndPointString(req)}.`,
           'The passwords you entered did not match.'));
         return;
       }
@@ -274,7 +277,7 @@ const LoginCreatePost: IRoute = {
       try {
         if(await UsersByEmail.GetUserId(email)) {
           next(new RequestError(RequestErrorType.Validation,
-            `Duplicate email registration attempt by ${Server.GetIpEndPoint(req)}.`,
+            `Duplicate email registration attempt by ${NetHelper.GetEndPointString(req)}.`,
             `An account is already registered to email address '${email}'.`))
           return;
         }
@@ -282,7 +285,7 @@ const LoginCreatePost: IRoute = {
         UsersByEmail.AddUser(email, password1, user.Id);
       } catch(error) {
         next(new RequestError(RequestErrorType.Server,
-          `Error creating user '${email}' for '${Server.GetIpEndPoint(req)}'. ${error}`,
+          `Error creating user '${email}' for '${NetHelper.GetEndPointString(req)}'. ${error}`,
           'There was a problem creating your account.'));
         return;
       }
@@ -306,7 +309,7 @@ const LoginCreatePost: IRoute = {
         return;
       }
       
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       endPointStruct.infoStr = `Your login request has been submitted. Please await further instructions from ${email}.`;
       
       res.redirect('/login');
@@ -316,7 +319,7 @@ const LoginCreatePost: IRoute = {
       
       // get the verify email page html
       let confirmEmailHtml = await Resources.GetPage('Emails/ConfirmEmailAddress.pug', {
-        "application_name": ApplicationName,
+        "application_name": Application.Name,
         "email": email,
         "confirmation_url": `${Server.GetWebHost()}/login/confirmation?user=${encryptedUserId}`
       });
@@ -326,11 +329,11 @@ const LoginCreatePost: IRoute = {
         await Email.Send({
           from: 'noreply@tattsgroup.com',
           to: email,
-          subject: `${ApplicationName} - Email Address Confirmation`,
+          subject: `${Application.Name} - Email Address Confirmation`,
           html: confirmEmailHtml
         });
       } catch(error) {
-        Log.Warning(`There was an error sending an email to ${email} for ${Server.GetIpEndPoint(req)}. ${error}`);
+        Log.Warning(`There was an error sending an email to ${email} for ${NetHelper.GetEndPointString(req)}. ${error}`);
       }
       
     }),
@@ -339,9 +342,9 @@ const LoginCreatePost: IRoute = {
 };
 
 /** Get the confirm login page */
-const LoginConfirmationPageGet: IRoute = {
+const LoginConfirmationPageGet: Route = {
   Path: '/login/confirmation',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -352,7 +355,7 @@ const LoginConfirmationPageGet: IRoute = {
       if(session == null) {
         // no, return
         next(new RequestError(RequestErrorType.Authentication,
-          `No session found for login confirmation from ${Server.GetIpEndPoint(req)}.`,
+          `No session found for login confirmation from ${NetHelper.GetEndPointString(req)}.`,
           'Please enable cookies.'));
         return;
       }
@@ -362,7 +365,7 @@ const LoginConfirmationPageGet: IRoute = {
       
       if(!userId) {
         next(new RequestError(RequestErrorType.Validation,
-          `Missing user id confirmation from ${Server.GetIpEndPoint(req)}`,
+          `Missing user id confirmation from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser.`));
         return;
       }
@@ -372,7 +375,7 @@ const LoginConfirmationPageGet: IRoute = {
         userId = Crypto.DecryptWithPassword(userId, Server.Configuration.CookieEncryptionPassword, 'hex');
       } catch(error) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid confirmation user id received from ${Server.GetIpEndPoint(req)}.`,
+          `Invalid confirmation user id received from ${NetHelper.GetEndPointString(req)}.`,
           `We received invalid information from your browser.`));
         return;
       }
@@ -415,7 +418,7 @@ const LoginConfirmationPageGet: IRoute = {
       }
       
       // get the endpoint struct
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       endPointStruct.infoStr = `Your login has been confirmed!`;
       
       // set the sessions user id
@@ -430,15 +433,17 @@ const LoginConfirmationPageGet: IRoute = {
   ]
 };
 
-/** Log the current user out, this creates a new session */
-const LogOutGet: IRoute = {
+DataHelper.Menu.Add({
+  Name: 'Log Out',
   Path: '/logout',
-  Method: HttpMethod.Get,
-  MenuItem: {
-    Name: 'Log Out',
-    Predicate: (req, res) => { return res.locals && res.locals.User; },
-    Priority: -1
-  },
+  Predicate: (req, res) => { return res.locals && res.locals.User; },
+  Priority: -1
+});
+
+/** Log the current user out, this creates a new session */
+const LogOutGet: Route = {
+  Path: '/logout',
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -454,7 +459,7 @@ const LogOutGet: IRoute = {
       res.clearCookie(Server.Configuration.SessionCookieName);
       
       // get the endpoint struct if created
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       endPointStruct.infoStr = 'Logged out.';
       
       // redirect to the login page
@@ -466,22 +471,22 @@ const LogOutGet: IRoute = {
 };
 
 /** Log the current user out, this creates a new session */
-const LoginResetPasswordGet: IRoute = {
+const LoginResetPasswordGet: Route = {
   Path: '/login/reset_password',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       
       // get the end point string
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the change password page
       let page = await Resources.GetPage('Login/LoginResetPassword.pug', {
         "title": 'Reset Password',
         "datetime": new Date().toDateString(),
         "description": 'Enter your Email address to reset your password.',
-        "menu": await Server.GetMenu(req, res),
+        "menu": await DataHelper.Menu.Get(req, res),
         "errorStr": endPointStruct.errorStr,
         "infoStr": endPointStruct.infoStr
       });
@@ -500,15 +505,15 @@ const LoginResetPasswordGet: IRoute = {
 };
 
 /** Log the current user out, this creates a new session */
-const LoginResetPasswordPost: IRoute = {
+const LoginResetPasswordPost: Route = {
   Path: '/login/reset_password',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/page'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       
       // get the endpoint structure
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the email
       let email: string = '' + req.body && req.body.email;
@@ -516,7 +521,7 @@ const LoginResetPasswordPost: IRoute = {
       // was the email retrieved?
       if(IsNullOrEmpty(email)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid email entered in reset password request from ${Server.GetIpEndPoint(req)}.`,
+          `Invalid email entered in reset password request from ${NetHelper.GetEndPointString(req)}.`,
           `Invalid email entered.`));
         return;
       }
@@ -546,7 +551,7 @@ const LoginResetPasswordPost: IRoute = {
       
       // get the verify email page html
       let resetPasswordEmailHtml: string = await Resources.GetPage('Emails/ConfirmEmailAddress.pug', {
-        "application_name": ApplicationName,
+        "application_name": Application.Name,
         "email": email,
         "confirmation_url": `${Server.GetWebHost()}/login/reset_password?user=${encryptedUserId}`
       });
@@ -556,11 +561,11 @@ const LoginResetPasswordPost: IRoute = {
         await Email.Send({
           from: 'noreply@tattsgroup.com',
           to: email,
-          subject: `${ApplicationName} - Email Address Confirmation`,
+          subject: `${Application.Name} - Email Address Confirmation`,
           html: resetPasswordEmailHtml
         });
       } catch(error) {
-        Log.Warning(`There was an error sending an email to ${email} for ${Server.GetIpEndPoint(req)}. ${error}`);
+        Log.Warning(`There was an error sending an email to ${email} for ${NetHelper.GetEndPointString(req)}. ${error}`);
       }
       
       // get the endpoint struct if created
@@ -575,7 +580,7 @@ const LoginResetPasswordPost: IRoute = {
 };
 
 /** Collection of 'login' routes */
-export const Login: IRoute[] = [
+export const Login: Route[] = [
   LoginPageGet,
   LoginPost,
   LoginCreatePageGet,

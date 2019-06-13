@@ -10,21 +10,24 @@ import * as express from 'express';
 
 import { IUser } from '../../Data/Accounts/Index';
 import { RequestError, RequestErrorType } from '../../Tools/Errors/Index';
-import { HttpMethod, AccessType } from '../../Tools/Index';
-import { IRoute } from './Index';
+import { Http, AccessType } from '../../Tools/Index';
+import { Route } from '../Route';
 import { Resources, Server } from '../../Managers/Index';
 import { WebErrorHandling, AuthorizePrivate, HandleAsyncErrors } from '../Middlewares/Index';
 import { PermissionsByUser } from '../../Data/Accounts/Index';
+import { DataHelper } from '../Index';
+
+DataHelper.Menu.Add({
+  Access: [{Access: AccessType.Read, Resource: 'dashboard'}],
+  Name: 'Dashboard',
+  Path: '/dashboard',
+  Priority: 10
+});
 
 /** Dashboard Page */
-const DashboardGet: IRoute = {
+const DashboardGet: Route = {
   Path: '/dashboard',
-  Method: HttpMethod.Get,
-  MenuItem: {
-    Access: [{Access: AccessType.Read, Resource: 'dashboard'}],
-    Name: 'Dashboard',
-    Priority: 10
-  },
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Read, 'dashboard'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -33,7 +36,7 @@ const DashboardGet: IRoute = {
       let user: IUser = res.locals.User;
       
       // clear the end point struct strings
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the dashboard page
       let page: string;
@@ -45,7 +48,7 @@ const DashboardGet: IRoute = {
           "description": 'Home base of operations.',
           "errorStr": endPointStruct.errorStr,
           "infoStr": endPointStruct.infoStr,
-          "menu": await Server.GetMenu(req, res),
+          "menu": await DataHelper.Menu.Get(req, res),
           "email": user.Email,
           "canUpdateContent": await PermissionsByUser.HasAccess(user.Id, AccessType.Update, 'content'),
           "canUpdateApplication": await PermissionsByUser.HasAccess(user.Id, AccessType.Update, 'application')
@@ -71,4 +74,4 @@ const DashboardGet: IRoute = {
 };
 
 /** Collection of 'dashboard' routes */
-export const Dashboard: IRoute[] = [ DashboardGet ];
+export const Dashboard: Route[] = [ DashboardGet ];

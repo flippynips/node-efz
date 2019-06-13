@@ -8,8 +8,8 @@
 
 import * as nodemailer from 'nodemailer';
 
-import { IsNullOrEmpty, ApplicationName } from '../Tools/Index';
-import { Manager, Log, Input } from "./Index";
+import { Application, Manager, Log, Input, IConfiguration } from "./Index";
+import { IsNullOrEmpty } from '../Tools/Index';
 
 /** Email configuration */
 class Configuration {
@@ -24,7 +24,7 @@ class Configuration {
   /** Optional password to authenticate with the service */
   Password: string = null;
   /** Default email sender. Used when sending emails from command line. */
-  DefaultSender: string = `noreply@${ApplicationName}`;
+  DefaultSender: string = `noreply@${Application.Name}`;
   /** Service connection timeout */
   ConnectionTimeout: number = 1000 * 60 * 2;
   /** TODO : Implement and test secure transporter */
@@ -32,20 +32,49 @@ class Configuration {
 }
 
 /** Manager of emails. */
-class EmailManager extends Manager<Configuration> {
+class EmailManager extends Manager {
   
   //-------------------------------------//
+  
+  /** Email configuration. */
+  public get Configuration(): Configuration {
+    return this._configuration.Item;
+  }
   
   //-------------------------------------//
   
   /** Default email transporter instance */
-  private _transporter: nodemailer.Transporter;
+  protected _transporter: nodemailer.Transporter;
+  
+  /** Configuration instance. */
+  protected _configuration: IConfiguration<Configuration>;
   
   //-------------------------------------//
   
   /** Construct a new email manager */
   constructor() {
-    super(Configuration);
+    super();
+  }
+  
+  /** Start the email manager. */
+  public async Start(): Promise<void> {
+    await super.Start();
+    
+    this._configuration = Application.Configuration(
+      './config/EmailManager.config',
+      new Configuration(),
+      this.OnConfiguration
+    );
+    await this._configuration.Load();
+    
+  }
+  
+  /** Stop the email manager. */
+  public async Stop(): Promise<void> {
+    await super.Stop();
+    
+    await this._configuration.Save();
+    
   }
   
   /** Send an email with the specified options */
@@ -67,14 +96,14 @@ class EmailManager extends Manager<Configuration> {
   //-------------------------------------//
   
   /** On the email manager configuration being updated. */
-  protected OnConfiguration = (config: any): void => {
+  protected OnConfiguration = (config: Configuration): void => {
     
     config.Name = config.Name || 'email';
     config.Service = config.Service || null;
     config.ServicePort = config.ServicePort || 587;
     config.Username = config.Username || '';
     config.Password = config.Password || '';
-    config.DefaultSender = config.DefaultSender || `noreply@${ApplicationName}`;
+    config.DefaultSender = config.DefaultSender || `noreply@${Application.Name}`;
     config.ConnectionTimeout = config.ConnectionTimeout || 1000 * 60 * 2;
     config.Secure = config.Secure || false;
     
@@ -117,7 +146,7 @@ class EmailManager extends Manager<Configuration> {
   }
   
   /** On a send command line */
-  private OnSendCommand(text: string): void {
+  private OnSendCommand = (text: string): void => {
     
     // parse the command line options
     let args = text.ParseArguments();
@@ -126,7 +155,7 @@ class EmailManager extends Manager<Configuration> {
     switch(args.length) {
       case 3:
         Email.SendSync({
-          from: Email.Configuration.DefaultSender,
+          from: this.Configuration.DefaultSender,
           to: args[0],
           subject: args[1],
           text: args[2],
@@ -150,4 +179,4 @@ class EmailManager extends Manager<Configuration> {
 }
 
 /** Global email manager instance */
-export var Email: EmailManager = new EmailManager();
+export const Email: EmailManager = new EmailManager();

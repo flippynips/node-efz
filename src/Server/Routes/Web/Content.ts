@@ -11,15 +11,16 @@ import * as uuid from 'uuid';
 
 import { IUser, Access } from '../../Data/Accounts/Index';
 import { RequestError, RequestErrorType } from '../../Tools/Errors/Index';
-import { HttpMethod, AccessType, IsNullOrEmpty } from '../../Tools/Index';
-import { IRoute } from '../IRoute';
+import { Http, AccessType, IsNullOrEmpty } from '../../Tools/Index';
+import { Route } from '../Route';
 import { Resources, Server, Log } from '../../Managers/Index';
 import { WebErrorHandling, AuthorizePrivate, HandleAsyncErrors } from '../Middlewares/Index';
-import { IBlob, BlobStream, Blobs } from '../../Data/BlobStores/Index';
+import { Blob, BlobStream, Blobs } from '../../Data/Base/BlobStores/Index';
 import { PermissionsByUser, UsersById } from '../../Data/Accounts/Index';
 import { Dictionary } from 'lodash';
 
 import '../../Tools/Index';
+import { NetHelper, DataHelper } from '../Index';
 
 /** Multer instance used for file uploads */
 const Multer: multer.Instance = multer({ storage: multer.memoryStorage() });
@@ -54,15 +55,17 @@ interface IDisplayContent {
   
 }
 
-/** Get the content page */
-const ContentListGet: IRoute = {
+DataHelper.Menu.Add({
+  Name: 'Content',
   Path: '/content',
-  Method: HttpMethod.Get,
-  MenuItem: {
-    Name: 'Content',
-    Access: [Access(AccessType.Read, 'content')],
-    Priority: 8
-  },
+  Access: [Access(AccessType.Read, 'content')],
+  Priority: 8
+});
+
+/** Get the content page */
+const ContentListGet: Route = {
+  Path: '/content',
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Read, 'content'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -82,7 +85,7 @@ const ContentListGet: IRoute = {
         try {
           
           // check the content still exists
-          let blob: IBlob = await Blobs.GetBlob(`content:${userContent[i].Name}`, userContent[i].Version);
+          let blob: Blob = await Blobs.GetBlob(`content:${userContent[i].Name}`, userContent[i].Version);
           if(!blob) {
             await PermissionsByUser.RemoveAccess(user.Id, `content/${userContent[i].Name}`);
             userContent.RemoveAt(i);
@@ -125,7 +128,7 @@ const ContentListGet: IRoute = {
       displayContent.sort((a, b): number => { return a.Name.localeCompare(b.Name); });
       
       // get the endpoint struct if created
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the content list page
       let page: string = await Resources.GetPage('Content/ContentList.pug', {
@@ -134,7 +137,7 @@ const ContentListGet: IRoute = {
         'description': 'Collection of content that can be accessed remotely.',
         'infoStr': endPointStruct.infoStr,
         'errorStr': endPointStruct.errorStr,
-        'menu': await Server.GetMenu(req, res),
+        'menu': await DataHelper.Menu.Get(req, res),
         'displayContent': displayContent,
         'contentNameRegex': Server.Configuration.ContentNameRegexStr,
         'canCreateContent': await PermissionsByUser.HasAccess(user.Id, AccessType.Create, 'content')
@@ -150,9 +153,9 @@ const ContentListGet: IRoute = {
 }
 
 /** Post a new content item */
-const ContentAddPost: IRoute = {
+const ContentAddPost: Route = {
   Path: '/content/add',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Create, 'content'),
     Multer.single('content'),
@@ -164,7 +167,7 @@ const ContentAddPost: IRoute = {
       // check the user permissions
       if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Create, `content`)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Unauthorized access to add content from ${Server.GetIpEndPoint(req)}`,
+          `Unauthorized access to add content from ${NetHelper.GetEndPointString(req)}`,
           `Insufficient permissions to add content.`));
         return;
       }
@@ -177,7 +180,7 @@ const ContentAddPost: IRoute = {
       // have the parameters been specified?
       if(IsNullOrEmpty(name) || !buffer || isNaN(version) || version < 0 || buffer.length == 0 || !Server.ContentNameRegex.test(name)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received during add content request from ${Server.GetIpEndPoint(req)}`, 
+          `Invalid data received during add content request from ${NetHelper.GetEndPointString(req)}`, 
           `We received invalid information from your browser. Please try again.`));
         return;
       }
@@ -198,7 +201,7 @@ const ContentAddPost: IRoute = {
       }
       
       // get the blobs of the specified name
-      let blob: IBlob[] = await Blobs.GetBlobs(`content:${name}`);
+      let blob: Blob[] = await Blobs.GetBlobs(`content:${name}`);
       
       // was the blob retrieved?
       if(blob && blob.length > 0) {
@@ -243,7 +246,7 @@ const ContentAddPost: IRoute = {
       ]);
       
       // get the endpoint struct if created
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       endPointStruct.infoStr = `Content ${name} v${version} added.`;
       
       // redirect to the content list page
@@ -255,9 +258,9 @@ const ContentAddPost: IRoute = {
 }
 
 /** Update an existing content item */
-const ContentUpdatePost: IRoute = {
+const ContentUpdatePost: Route = {
   Path: '/content/update',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Update, 'content/${req.query && req.query.name}'),
     Multer.single('content'),
@@ -271,7 +274,7 @@ const ContentUpdatePost: IRoute = {
       // have the parameters been specified?
       if(!name || !buffer || isNaN(version) || version < 0 || buffer.length == 0 || !Server.ContentNameRegex.test(name)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received during add content request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received during add content request from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
@@ -292,10 +295,10 @@ const ContentUpdatePost: IRoute = {
         }
       }
       
-      let previousBlob: IBlob;
+      let previousBlob: Blob;
       try {
         // get the blob of the specified name
-        let blobs: IBlob[] = await Blobs.GetBlobs(`content:${name}`);
+        let blobs: Blob[] = await Blobs.GetBlobs(`content:${name}`);
         
         // iterate and get the latest blob
         for(let blob of blobs) {
@@ -320,7 +323,7 @@ const ContentUpdatePost: IRoute = {
       }
       
       // write the buffer to the blob
-      let newBlob: IBlob;
+      let newBlob: Blob;
       try {
         let stream: BlobStream = await Blobs.GetStream(`content:${name}`, version);
         newBlob = stream.Blob;
@@ -352,7 +355,7 @@ const ContentUpdatePost: IRoute = {
       await UsersById.UpdateUser(user);
       
       // get the endpoint struct if created
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       endPointStruct.infoStr = `Content ${name} updated to version ${version}.`;
       
       // redirect to the content list page
@@ -364,9 +367,9 @@ const ContentUpdatePost: IRoute = {
 }
 
 /** Remove an existing content item */
-const ContentRemovePost: IRoute = {
+const ContentRemovePost: Route = {
   Path: '/content/remove',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Delete, 'content/${req.query && req.query.name}'),
     Multer.single('content'),
@@ -378,17 +381,17 @@ const ContentRemovePost: IRoute = {
       
       if(!name || isNaN(version) || version < 0) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received during remove content request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received during remove content request from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
       
       // get the user
       let user: IUser = res.locals.User;
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       
-      let blob: IBlob;
+      let blob: Blob;
       try {
         // check the existence of the blob
         blob = await Blobs.GetBlob(`content:${name}`, version);
@@ -437,9 +440,9 @@ const ContentRemovePost: IRoute = {
 }
 
 /** Create an api token and associate it with a content item */
-const ContentTokenAddPost: IRoute = {
+const ContentTokenAddPost: Route = {
   Path: '/content/token_add',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Update, 'content/${req.query && req.query.name}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -450,25 +453,25 @@ const ContentTokenAddPost: IRoute = {
       
       if(!name || isNaN(version) || version < 0) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received for content token generation request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received for content token generation request from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
       
       // get the user
       let user: IUser = res.locals.User;
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // validate the users access to the content
       if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Update, `content/${name}`)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Unauthorized access to add token to content ${name} v${version} from ${Server.GetIpEndPoint(req)}`,
+          `Unauthorized access to add token to content ${name} v${version} from ${NetHelper.GetEndPointString(req)}`,
           `Permission denied.`));
         return;
       }
       
       
-      let blob: IBlob;
+      let blob: Blob;
       try {
         // check the existence of the blob
         blob = await Blobs.GetBlob(`content:${name}`, version);
@@ -476,7 +479,7 @@ const ContentTokenAddPost: IRoute = {
         // was the blob retrieved?
         if(blob == null) {
           next(new RequestError(RequestErrorType.Validation,
-            `Request to get token for missing content ${name} v${version} from ${Server.GetIpEndPoint(req)}.`,
+            `Request to get token for missing content ${name} v${version} from ${NetHelper.GetEndPointString(req)}.`,
             `Content ${name} v${version} doesn't exist.`));
           return;
         }
@@ -491,7 +494,7 @@ const ContentTokenAddPost: IRoute = {
       // check for an existing api token
       if(blob.Metadata && blob.Metadata.Token) {
         next(new RequestError(RequestErrorType.Validation,
-          `Request to add existing token to ${name} v${version} from ${Server.GetIpEndPoint(req)}.`,
+          `Request to add existing token to ${name} v${version} from ${NetHelper.GetEndPointString(req)}.`,
           `Content ${name} v${version} already has a token.`));
         return;
       }
@@ -514,9 +517,9 @@ const ContentTokenAddPost: IRoute = {
 }
 
 /** Remove an existing content item */
-const ContentTokenRemovePost: IRoute = {
+const ContentTokenRemovePost: Route = {
   Path: '/content/token_remove',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Update, 'content/${req.query && req.query.name}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -527,24 +530,24 @@ const ContentTokenRemovePost: IRoute = {
       
       if(!name || isNaN(version) || version < 0) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received for content token generation request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received for content token generation request from ${NetHelper.GetEndPointString(req)}`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
       
       // get the user
       let user: IUser = res.locals.User;
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // validate the users access to the content
       if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Update, `content/${name}`)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Unauthorized access to add token to content ${name} v${version} from ${Server.GetIpEndPoint(req)}`,
+          `Unauthorized access to add token to content ${name} v${version} from ${NetHelper.GetEndPointString(req)}`,
           `Permission denied.`));
         return;
       }
       
-      let blob: IBlob;
+      let blob: Blob;
       try {
         // check the existence of the blob
         blob = await Blobs.GetBlob(`content:${name}`, version);
@@ -552,7 +555,7 @@ const ContentTokenRemovePost: IRoute = {
         // was the blob retrieved?
         if(blob == null) {
           next(new RequestError(RequestErrorType.Validation,
-            `Request to get token for missing content ${name} v${version} from ${Server.GetIpEndPoint(req)}.`,
+            `Request to get token for missing content ${name} v${version} from ${NetHelper.GetEndPointString(req)}.`,
             `Content ${name} v${version} doesn't exist.`));
           return;
         }
@@ -567,7 +570,7 @@ const ContentTokenRemovePost: IRoute = {
       // check for an existing api token
       if(!blob.Metadata || !blob.Metadata.Token) {
         next(new RequestError(RequestErrorType.Validation,
-          `Request to remove non-existent api token from content ${name} v${version} from ${Server.GetIpEndPoint(req)}.`,
+          `Request to remove non-existent api token from content ${name} v${version} from ${NetHelper.GetEndPointString(req)}.`,
           `Content ${name} v${version} doesn't have a token.`));
         return;
       }
@@ -587,9 +590,9 @@ const ContentTokenRemovePost: IRoute = {
 }
 
 /** Remove an existing content item */
-const ContentDownloadGet: IRoute = {
+const ContentDownloadGet: Route = {
   Path: '/content/:name',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Read, 'content/${req.params && req.params.name}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -600,7 +603,7 @@ const ContentDownloadGet: IRoute = {
       
       if(!name || isNaN(version) || version < 0) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid data received during downloading content request from ${Server.GetIpEndPoint(req)}`,
+          `Invalid data received during downloading content request from ${NetHelper.GetEndPointString(req)}`,
           'We received invalid information from your browser. Please try again.'));
         return;
       }
@@ -611,7 +614,7 @@ const ContentDownloadGet: IRoute = {
       // validate the users access to the content
       if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Update, `content/${name}`)) {
         next(new RequestError(RequestErrorType.Validation,
-          `Unauthorized access to downloading content ${name} v${version} from ${Server.GetIpEndPoint(req)}`,
+          `Unauthorized access to downloading content ${name} v${version} from ${NetHelper.GetEndPointString(req)}`,
           `Insufficient permissions to remove content ${name}.`));
         return;
       }
@@ -630,7 +633,7 @@ const ContentDownloadGet: IRoute = {
       // was the blob retrieved?
       if(!stream) {
         next(new RequestError(RequestErrorType.Validation,
-          `Request to download missing content ${name} v${version} from ${Server.GetIpEndPoint(req)}.`,
+          `Request to download missing content ${name} v${version} from ${NetHelper.GetEndPointString(req)}.`,
           `Content ${name} v${version} no longer exists.`));
         return;
       }
@@ -647,7 +650,7 @@ const ContentDownloadGet: IRoute = {
 }
 
 /** Collection of 'content' routes */
-export const Content: IRoute[] = [
+export const Content: Route[] = [
   ContentListGet,
   ContentAddPost,
   ContentRemovePost,

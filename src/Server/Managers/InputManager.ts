@@ -6,13 +6,11 @@
  * Revision History: None
  ******************************************************/
 
-import { Dictionary } from 'lodash';
-
-import { Manager } from "./Index";
-import { ApplicationName, MajorVersion, MinorVersion, Sleep } from "../Tools/Index";
+import { Application, Manager } from "./Index";
+import { Sleep, Dictionary } from "../Tools/Index";
 
 /** Manager of dynamic input handling. */
-class InputManager extends Manager<any> {
+class InputManager extends Manager {
   
   //-------------------------------------//
   
@@ -24,19 +22,19 @@ class InputManager extends Manager<any> {
   //-------------------------------------//
   
   /** Subscribe to all input */
-  private subText: Array<{ callback: (text: string) => void, help: string }>;
+  protected subText: Array<{ callback: (text: string) => void, help: string }>;
   
   /** Subscribe to input prefixed by a specified string */
-  private subPrefix: Array<{ key: string, callback: (text: string) => void, help: string }>;
+  protected subPrefix: Array<{ key: string, callback: (text: string) => void, help: string }>;
   
   /** Map of keys to string callbacks */
-  private subKeys: Dictionary<{ callback: (text: string) => void, help: string }>;
+  protected subKeys: Dictionary<{ callback: (text: string) => void, help: string }>;
   
   /** Map of keys to empty callbacks */
-  private subFlags: Dictionary<{ callback: () => void, help: string }>;
+  protected subFlags: Dictionary<{ callback: () => void, help: string }>;
   
   /** Flag indicating input is paused until [Enter] is pressed */
-  private pausedUntilEnterIsPressed: boolean;
+  protected pausedUntilEnterIsPressed: boolean;
   
   //-------------------------------------//
   
@@ -102,7 +100,7 @@ class InputManager extends Manager<any> {
     
   }
   
-  /** Subscribe to input prefixed by the specified key */
+  /** Subscribe to input matching the specified key */
   public SubscribeToFlag(key: string, callback: () => void, help: string = null): void {
     
     // set the callback
@@ -110,7 +108,7 @@ class InputManager extends Manager<any> {
     
   }
   
-  /** Unsubscribe to messages consisting of the specified key */
+  /** Unsubscribe to input matching the specified key */
   public UnsubscribeToFlag(key: string, callback: () => void): void {
     
     // remove the callback
@@ -118,7 +116,7 @@ class InputManager extends Manager<any> {
     
   }
   
-  /** Subscribe to input prefixed by the specified key */
+  /** Subscribe to all input. */
   public SubscribeToText(callback: (text: string) => void, help: string = null): void {
     
     // set the callback
@@ -126,7 +124,7 @@ class InputManager extends Manager<any> {
     
   }
   
-  /** Subscribe to input prefixed by the specified key */
+  /** Unsubscribe to all input. */
   public UnsubscribeToText(callback: (text: string) => void): void {
     
     // remove the callback
@@ -257,18 +255,18 @@ class InputManager extends Manager<any> {
     let separator: string = ' ' + new Array(Input.ConsoleWidth-1).join('-');
     let helpStr: string = `\n\x1b[32m${separator}`;
     
-    helpStr += `\n \x1b[36m${ApplicationName} v${MajorVersion}.${MinorVersion}.0\n\n\x1b[0m`;
+    helpStr += `\n \x1b[36m${Application.Name} v${Application.Version}.0\n\n\x1b[0m`;
     
     for(let i = 0; i < Input.subText.length; ++i) {
       if(Input.subText[i].help) helpStr += `  - ${Input.subText[i].help}\n`;
     }
     
-    for (const [key, value] of Object.entries(Input.subFlags)) {
-      if(value.help) helpStr += `  - ${value.help}\n`;
+    for (const key in Input.subFlags) {
+      if(Input.subFlags[key].help) helpStr += `  - ${Input.subFlags[key].help}\n`;
     }
     
-    for (const [key, value] of Object.entries(Input.subKeys)) {
-      if(value.help) helpStr += `  - ${value.help}\n`;
+    for (const key in Input.subKeys) {
+      if(Input.subKeys[key].help) helpStr += `  - ${Input.subKeys[key].help}\n`;
     }
     
     for(let i = 0; i < Input.subPrefix.length; ++i) {
@@ -284,4 +282,4 @@ class InputManager extends Manager<any> {
 }
 
 /** Global input manager instance */
-export var Input: InputManager = new InputManager();
+export const Input: InputManager = new InputManager();

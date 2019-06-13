@@ -11,10 +11,8 @@
 
 import { IPermissions, IUser } from './Index';
 import { AccessType } from '../../Tools/Index';
-import { Table } from '../Table';
-import { Caches, Log, Server } from '../../Managers/Index';
-import { ColumnType } from '../ColumnType';
-import { Application } from '../../Application';
+import { Table, ColumnType } from '../Base/Index';
+import { Application, Caches, Log, Server } from '../../Managers/Index';
 
 /** Table of access specifications by user id and resource */
 class PermissionsByUserTable extends Table {
@@ -37,11 +35,11 @@ class PermissionsByUserTable extends Table {
     ]);
   }
   
-  /** Initialize the table */
+  /** Initialize the table. */
   public async Initialize(): Promise<void> {
-    super.Initialize();
-    // create a cache collection for the permissions
-    Caches.CreateCache<IPermissions>(PermissionsByUserTable.CacheKey, 800, 400, null, null, this.UpdatePermissions);
+    await super.Initialize();
+    // create a cache collection for permissions
+    Caches.CreateCache<IPermissions>(PermissionsByUserTable.CacheKey, 800, 400, null, this.UpdatePermissions);
   }
   
   /** Add default permissions to those associated with the specified user. */
@@ -157,7 +155,7 @@ class PermissionsByUserTable extends Table {
     };
     
     // add the permissions to the cache
-    permissions = Caches.AddOrGet(PermissionsByUserTable.CacheKey, `${userId}::${resourcePath}`, permissions);
+    permissions = Caches.SetOrGet(PermissionsByUserTable.CacheKey, `${userId}::${resourcePath}`, permissions);
     
     // return the permissions
     return permissions;
@@ -189,7 +187,7 @@ class PermissionsByUserTable extends Table {
       // yes, update the access
       permissions.Access = access;
       // update the cache
-      Caches.TryAdd(PermissionsByUserTable.CacheKey, cacheId, permissions);
+      Caches.Set(PermissionsByUserTable.CacheKey, cacheId, permissions);
       return;
     }
     
@@ -201,7 +199,7 @@ class PermissionsByUserTable extends Table {
     };
     
     // add to or get from cache
-    permissions = Caches.AddOrGet(PermissionsByUserTable.CacheKey, cacheId, permissions);
+    permissions = Caches.SetOrGet(PermissionsByUserTable.CacheKey, cacheId, permissions);
     
     // update the permissions immediately
     await this.UpdatePermissions(cacheId, permissions);
@@ -254,7 +252,7 @@ class PermissionsByUserTable extends Table {
   public async GetAllPermissions(userId: string): Promise<IPermissions[]> {
     
     // collection of permissions to return
-    let permissions: IPermissions[] = Caches.GetAll(PermissionsByUserTable.CacheKey);
+    let permissions = Caches.GetAll<IPermissions>(PermissionsByUserTable.CacheKey).map(v => v.value);
     for(let i = permissions.length-1; i >= 0; --i) {
       if(permissions[i].UserId !== userId) permissions.RemoveAt(i);
     }
@@ -280,7 +278,7 @@ class PermissionsByUserTable extends Table {
       };
       
       // add the permission entry to the cache
-      permission = Caches.AddOrGet(PermissionsByUserTable.CacheKey, `${userId}::${permission.Resource}`, permission);
+      permission = Caches.SetOrGet(PermissionsByUserTable.CacheKey, `${userId}::${permission.Resource}`, permission);
       
       // apppend the permission to the collection
       permissions.push(permission);
@@ -323,7 +321,7 @@ class PermissionsByUserTable extends Table {
       
       if(Application.IsRunning && value) {
         // add the session back into the cache as a buffer
-        Caches.AddOrGet(PermissionsByUserTable.CacheKey, `${value.UserId}::${value.Resource}`, value);
+        Caches.SetOrGet(PermissionsByUserTable.CacheKey, `${value.UserId}::${value.Resource}`, value);
       }
       
     }

@@ -8,16 +8,16 @@
 import * as express from 'express';
 
 import { Log, Server } from '../../Managers/Index';
-import { HttpMethod, IsNullOrEmpty } from '../../Tools/Index';
-import { RequestError, RequestErrorType } from '../../Tools/Errors/Index';
+import { Http, IsNullOrEmpty, Errors } from '../../Tools/Index';
 import { ApiErrorHandling } from '../Middlewares/Index';
-import { IBlob, BlobStream, Blobs } from '../../Data/BlobStores/Index';
-import { IRoute } from './Index';
+import { Blob, BlobStream, Blobs } from '../../Data/Base/BlobStores/Index';
+import { Route } from '../Route';
+import { NetHelper } from '../Index';
 
 /** Get the specified version of the specified content */
-const ApiContentGet: IRoute = {
+const ApiContentGet: Route = {
   Path: '/api/v1/content/:name',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     async (req: express.Request, res: express.Response, next: express.NextFunction) => {
       
@@ -26,8 +26,8 @@ const ApiContentGet: IRoute = {
       
       // validate the name was specified
       if(IsNullOrEmpty(name)) {
-        next(new RequestError(RequestErrorType.Validation,
-          `Missing parameter 'name' in get content api request from ${Server.GetIpEndPoint(req)}.`,
+        next(new Errors.RequestError(Errors.RequestErrorType.Validation,
+          `Missing parameter 'name' in get content api request from ${NetHelper.GetEndPointString(req)}.`,
           `Missing parameter 'name' in request /api/v1/content/{name}.`));
         return;
       }
@@ -36,14 +36,14 @@ const ApiContentGet: IRoute = {
       if(versionStr != null) {
         version = parseInt(versionStr);
         if(isNaN(version) || version < 0) {
-          next(new RequestError(RequestErrorType.Validation,
-            `Invalid parameter 'version' in get content api request from ${Server.GetIpEndPoint(req)}.`,
+          next(new Errors.RequestError(Errors.RequestErrorType.Validation,
+            `Invalid parameter 'version' in get content api request from ${NetHelper.GetEndPointString(req)}.`,
             `Invalid parameter 'version' in request /api/v1/content/{name}?version={version}.`));
           return;
         }
       }
       
-      let blob: IBlob;
+      let blob: Blob;
       
       try {
         
@@ -67,14 +67,14 @@ const ApiContentGet: IRoute = {
         }
         
       } catch(error) {
-        next(new RequestError(RequestErrorType.Server,
+        next(new Errors.RequestError(Errors.RequestErrorType.Server,
           `An error occurred retrieving content blob ${name}. ${error}`,
           `Content ${name} couldn't be retrieved.`));
         return;
       }
       
       if(blob == null) {
-        next(new RequestError(RequestErrorType.Validation,
+        next(new Errors.RequestError(Errors.RequestErrorType.Validation,
           `Content '${name}' wasn't found.`,
           `Specified content ${name}${version > 0 ? ` v${version}` : ''} was not found.`));
         return;
@@ -82,8 +82,8 @@ const ApiContentGet: IRoute = {
       
       // validate the authorization token
       if(!AuthorizeBasic(req, blob)) {
-        next(new RequestError(RequestErrorType.Authentication,
-          `Invalid authorization token from ${Server.GetIpEndPoint(req)}`,
+        next(new Errors.RequestError(Errors.RequestErrorType.Authentication,
+          `Invalid authorization token from ${NetHelper.GetEndPointString(req)}`,
           `Invalid authorization.`));
         return;
       }
@@ -104,7 +104,7 @@ const ApiContentGet: IRoute = {
         blobStream.end();
         
       } catch(error) {
-        next(new RequestError(RequestErrorType.Server,
+        next(new Errors.RequestError(Errors.RequestErrorType.Server,
           `An error occurred retrieving content blob ${name}. ${error}`,
           `Content ${name} couldn't be retrieved.`));
         return;
@@ -117,9 +117,9 @@ const ApiContentGet: IRoute = {
 };
 
 /** Get the latest version of the specified content */
-const ApiContentVersionGet: IRoute = {
+const ApiContentVersionGet: Route = {
   Path: '/api/v1/content/:name/version',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
       
@@ -129,8 +129,8 @@ const ApiContentVersionGet: IRoute = {
       // was the name specified?
       if(IsNullOrEmpty(name)) {
         // no, error
-        next(new RequestError(RequestErrorType.Validation,
-          `Missing parameter 'name' in get content version api request from ${Server.GetIpEndPoint(req)}.`,
+        next(new Errors.RequestError(Errors.RequestErrorType.Validation,
+          `Missing parameter 'name' in get content version api request from ${NetHelper.GetEndPointString(req)}.`,
           `Missing parameter 'name' in request /api/v1/content/{name}/version.`));
         return;
       }
@@ -140,7 +140,7 @@ const ApiContentVersionGet: IRoute = {
       
       // get the latest version number
       let version: number = -1;
-      let blob: IBlob = null;
+      let blob: Blob = null;
       try {
         for(let blobEntry of await Blobs.GetBlobs(`content:${name}`)) {
           if(blobEntry.Version > version) {
@@ -150,8 +150,8 @@ const ApiContentVersionGet: IRoute = {
           if(AuthorizeBasic(req, blob)) authorized = true;
         }
       } catch(error) {
-        next(new RequestError(RequestErrorType.Server,
-          `Error retrieving blob versions of ${name} for ${Server.GetIpEndPoint(req)}. ${error}`,
+        next(new Errors.RequestError(Errors.RequestErrorType.Server,
+          `Error retrieving blob versions of ${name} for ${NetHelper.GetEndPointString(req)}. ${error}`,
           `There was a problem retrieving content versions.`));
         return;
       }
@@ -159,7 +159,7 @@ const ApiContentVersionGet: IRoute = {
       // was the blob found?
       if(!blob) {
         // no, error
-        next(new RequestError(RequestErrorType.Validation,
+        next(new Errors.RequestError(Errors.RequestErrorType.Validation,
           `No versions found for content ${name}.`,
           `No content found of that name.`));
         return;
@@ -167,8 +167,8 @@ const ApiContentVersionGet: IRoute = {
       
       // authorize access to the specified content
       if(!authorized) {
-        next(new RequestError(RequestErrorType.Authentication,
-          `Invalid authorization token from ${Server.GetIpEndPoint(req)}`,
+        next(new Errors.RequestError(Errors.RequestErrorType.Authentication,
+          `Invalid authorization token from ${NetHelper.GetEndPointString(req)}`,
           `Invalid authorization.`));
         return;
       }
@@ -186,7 +186,7 @@ const ApiContentVersionGet: IRoute = {
 };
 
 /** Authorize the specified request with the specified blob */
-const AuthorizeBasic = (req: express.Request, blob: IBlob): boolean => {
+const AuthorizeBasic = (req: express.Request, blob: Blob): boolean => {
   
   // authorize access to the specified blob
   let token: string = blob.Metadata && blob.Metadata.Token || null;
@@ -200,7 +200,7 @@ const AuthorizeBasic = (req: express.Request, blob: IBlob): boolean => {
 };
 
 /** Collection of 'content' api routes */
-export const Content: IRoute[] = [
+export const Content: Route[] = [
   ApiContentGet,
   ApiContentVersionGet,
 ];

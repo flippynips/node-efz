@@ -9,15 +9,15 @@ var mime = require('mime-types');
 import * as express from 'express';
 import * as pathHelpers from 'path';
 
-import { HttpMethod, AccessType } from '../../Tools/Index';
+import { Http, AccessType } from '../../Tools/Index';
 import { Resources, Log } from '../../Managers/Index';
 import { AuthorizePublic, HandleAsyncErrors } from '../Middlewares/Index';
-import { IRoute } from '../IRoute';
+import { Route } from '../Route';
 
 /** Public sources available on the local file system */
-const SourcesGet: IRoute = {
+const SourcesGet: Route = {
   Path: '/public/*',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePublic(AccessType.Read, 'public/resource'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response): Promise<void> => {
@@ -38,6 +38,6 @@ const SourcesGet: IRoute = {
 };
 
 /** Collection of public 'sources' routes */
-export const Sources: IRoute[] = [
+export const Sources: Route[] = [
   SourcesGet
 ];

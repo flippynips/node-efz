@@ -1,0 +1,35 @@
+
+{
+  "compileOnSave": false,
+  "exclude": [
+    "./../../node_modules/**/*",
+    "./../Server/**/*",
+    "./../../node_modules/winston/transports/file.js"
+  ],
+  "include": [
+    "./**/*"
+  ],
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "strict": false,
+    "experimentalDecorators": true,
+    "removeComments": true,
+    "skipLibCheck": true,
+    "allowUnreachableCode": true,
+    "noImplicitAny": true,
+    "sourceMap": true,
+    "outDir": "./../../bin/Browser",
+    "baseUrl": ".",
+    "lib": [ "es2015", "dom" ],
+    "paths": {
+      "*": [
+        "./../../node_modules/*",
+        "./../types/*"
+      ]
+    }
+  }
+}
+

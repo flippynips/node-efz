@@ -6,13 +6,10 @@
  * Revision History: None
  ******************************************************/
 
-import * as uuid from 'uuid';
 import * as cassandra from 'cassandra-driver';
 
-import { IUser } from './Index';
-import { Table } from '../Table';
-import { Caches, Log, Crypto, Server } from '../../Managers/Index';
-import { ColumnType } from '../ColumnType';
+import { Table, ColumnType } from '../Base/Index';
+import { Log, Crypto, Server } from '../../Managers/Index';
 
 /** Table of session information by cookie guid */
 class UsersByEmailTable extends Table {

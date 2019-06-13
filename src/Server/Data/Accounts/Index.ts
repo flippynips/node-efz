@@ -1,5 +1,5 @@
 
-export * from '../../../Common/Data/Accounts/Index';
+export * from '../../../Shared/Data/Accounts/Index';
 
 export * from './PermissionsByUser';
 export * from './SessionsByCookie';

@@ -1,2 +1,2 @@
 
-export * from '../../../Common/Tools/Errors/Index';
+export * from '../../../Shared/Tools/Errors/Index';

@@ -8,42 +8,64 @@
 import * as pathHelpers from 'path';
 import * as pug from 'pug';
 
-import { Folder, File } from "../Tools/FileSystem/Index";
-import { Manager, Log } from './Index';
+import { IConfiguration, Application, Manager, Log } from './Index';
+import { Folder, File } from '../Tools/FileSystem/Index';
 import { Input } from './InputManager';
-import { IConfiguration } from '../Tools/Index';
+import { Files } from '../Tools/Index';
 
 /** Resources configuration */
 class Configuration {
+  
   /** Path to where resources are relative. This directory will be watched. */
   SourceDirectory: string = `./resources/`;
   /** Number of milliseconds buffer between when a file change is detected and a refresh of the file-system occurs. */
   RefreshTimeout: number = 2000;
+  
 }
 
 /** Manager and caching of required resources. */
-class ResourcesManager extends Manager<Configuration> {
+class ResourcesManager extends Manager {
   
   //-------------------------------------//
+  
+  public get Configuration(): Configuration {
+    return this._configuration.Item;
+  }
+  
+  public get SourceFolder(): Folder {
+    return this._sourceFolder;
+  }
   
   //-------------------------------------//
   
   /** Filesystem structure starting with the resource folder */
-  private _sourceFolder: Folder;
+  protected _sourceFolder: Folder;
+  
+  /** Configuration instance. */
+  protected _configuration: IConfiguration<Configuration>;
   
   //-------------------------------------//
   
   /** Construct a new resource manager. */
   constructor() {
-    super(Configuration);
+    super();
   }
   
   /** Start override to subscript to resource refresh commands */
-  public async Start(configuration?: IConfiguration<Configuration>): Promise<void> {
-    await super.Start(configuration);
+  public async Start(): Promise<void> {
+    await super.Start();
+    
+    this._configuration = Application.Configuration(
+      './config/ResourcesManager.config',
+      new Configuration(),
+      this.OnConfiguration
+    );
+    await this._configuration.Load();
+    
     Input.SubscribeToFlag('refresh resources', () => {
       this._sourceFolder.Refresh();
     }, `'refresh resources' to cause all cached resource files to be invalidated.`);
+    
   }
   
   /** Get a html page resource by path */
@@ -56,7 +78,7 @@ class ResourcesManager extends Manager<Configuration> {
     Log.Debug(`Retrieving page at path ${path}`);
     
     // get the file from the file structure
-    let file : File = this._sourceFolder.Get(path.split(pathHelpers.sep));
+    let file : File = this._sourceFolder.GetFile(path.split(pathHelpers.sep));
     
     // was a file found? no, return null
     if(file == null) {
@@ -72,20 +94,25 @@ class ResourcesManager extends Manager<Configuration> {
     
   }
   
-  /** Get the byte buffer at the specified path */
-  public async GetBuffer(path: string): Promise<Buffer> {
+  /** Get the byte buffer at the specified path. */
+  public async GetBuffer(...paths: string[]): Promise<Buffer> {
     
     // normalise the path
-    path = pathHelpers.normalize(path).substr(1);
+    for(let i = 0; i < paths.length; ++i) {
+      paths[i] = pathHelpers.normalize(paths[i]);
+    }
     
+    let path: string = pathHelpers.join(...paths);
+    
+    // TODO : Remove
     // retrieve the buffer
-    Log.Debug(`Retrieving buffer at path ${path}`);
+    Log.Debug(`Retrieving buffer at path '${path}'`);
     
-    let file: File = this._sourceFolder.Get(path.split(pathHelpers.sep));
+    let file: File = this._sourceFolder.GetFile(path.split(pathHelpers.sep));
     
     // was a file found? no, return null
     if(file == null) {
-      Log.Verbose(`Buffer at path ${path} wasn't found`);
+      Log.Verbose(`Buffer at path '${path}' wasn't found`);
       return null;
     }
     
@@ -104,11 +131,13 @@ class ResourcesManager extends Manager<Configuration> {
       this._sourceFolder.Dispose();
       this._sourceFolder = null;
     }
-    if(config.SourceDirectory) this._sourceFolder = new Folder(null, config.SourceDirectory);
+    if(config.SourceDirectory) {
+      this._sourceFolder = new Folder(null, pathHelpers.resolve(config.SourceDirectory));
+    }
     
   }
   
 }
 
 /** Global resources manager instance */
-export var Resources: ResourcesManager = new ResourcesManager();
+export const Resources: ResourcesManager = new ResourcesManager();

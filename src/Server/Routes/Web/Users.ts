@@ -7,14 +7,15 @@
 
 import * as express from 'express';
 
-import { HttpMethod, AccessType, IsNullOrEmpty, GetEnumValues, GetEnumIndex, GetEnumValue, nameof } from '../../Tools/Index';
+import { Http, AccessType, IsNullOrEmpty, GetEnumValues, GetEnumIndex, GetEnumValue, nameof } from '../../Tools/Index';
 import { IUser, Access, UserState, IPermissions, PermissionsByUser, UsersById, UsersByEmail } from '../../Data/Accounts/Index';
 import { RequestError, RequestErrorType } from '../../Tools/Errors/Index';
-import { Resources, Server, Log } from '../../Managers/Index';
-import { IRoute } from '../IRoute';
+import { Resources, Server } from '../../Managers/Index';
+import { Route } from '../Route';
 import { WebErrorHandling, AuthorizePrivate, HandleAsyncErrors } from '../Middlewares/Index';
 
 import '../../Tools/Index';
+import { NetHelper, DataHelper } from '../Index';
 
 /** Structure for users to be displayed */
 interface IDisplayUser {
@@ -30,15 +31,17 @@ interface IDisplayUser {
   
 }
 
-/** User list get */
-const UserListGet: IRoute = {
+DataHelper.Menu.Add({
+  Name: 'Users',
   Path: '/users/list',
-  Method: HttpMethod.Get,
-  MenuItem: {
-    Name: 'Users',
-    Access: [Access(AccessType.Create, 'user')],
-    Priority: 9
-  },
+  Access: [Access(AccessType.Create, 'user')],
+  Priority: 9
+});
+
+/** User list get */
+const UserListGet: Route = {
+  Path: '/users/list',
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Create, 'user'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -58,7 +61,7 @@ const UserListGet: IRoute = {
       }
       
       // clear the end point struct strings
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the dashboard page
       let page: string;
@@ -70,7 +73,7 @@ const UserListGet: IRoute = {
           "description": 'List of users.',
           "errorStr": endPointStruct.errorStr,
           "infoStr": endPointStruct.infoStr,
-          "menu": await Server.GetMenu(req, res),
+          "menu": await DataHelper.Menu.Get(req, res),
           "email": user.Email,
           "users": users,
           "canUpdateUsers": await PermissionsByUser.HasAccess(user.Id, AccessType.Update, 'user'),
@@ -97,9 +100,9 @@ const UserListGet: IRoute = {
 };
 
 /** User get */
-const UserGet: IRoute = {
+const UserGet: Route = {
   Path: '/user/:email',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Read, 'user/${req.params && req.params.email}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -117,7 +120,7 @@ const UserGet: IRoute = {
       if(!targetUserId) {
         // no, error
         next(new RequestError(RequestErrorType.Validation,
-          `Request to access non-existant user of email ${targetUserEmail} from ${Server.GetIpEndPoint(req)}.`,
+          `Request to access non-existant user of email ${targetUserEmail} from ${NetHelper.GetEndPointString(req)}.`,
           `Permission denied`));
         return;
       }
@@ -142,7 +145,7 @@ const UserGet: IRoute = {
       let displayPermissions: IPermissions[] = await PermissionsByUser.GetAllPermissions(targetUser.Id);
       
       // get the endpoint structure
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the dashboard page
       let page: string;
@@ -153,7 +156,7 @@ const UserGet: IRoute = {
           "description": `Edit user page.`,
           "errorStr": endPointStruct.errorStr,
           "infoStr": endPointStruct.infoStr,
-          "menu": await Server.GetMenu(req, res),
+          "menu": await DataHelper.Menu.Get(req, res),
           "email": user.Email,
           "displayUser": targetUser,
           "displayUserState": UserState[targetUser.State],
@@ -186,9 +189,9 @@ const UserGet: IRoute = {
 };
 
 /** User update */
-const UserUpdate: IRoute = {
+const UserUpdate: Route = {
   Path: '/user/:email/update',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Update, 'user/${req.params && req.params.email}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -202,7 +205,7 @@ const UserUpdate: IRoute = {
       // validate the email
       if(!email) {
         next(new RequestError(RequestErrorType.Validation,
-          `Missing 'email' parameter in update user request from ${Server.GetIpEndPoint(req)}.`,
+          `Missing 'email' parameter in update user request from ${NetHelper.GetEndPointString(req)}.`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
@@ -212,7 +215,7 @@ const UserUpdate: IRoute = {
       // validate the target user
       if(!targetUserId) {
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid 'email' parameter in update user request from ${Server.GetIpEndPoint(req)}.`,
+          `Invalid 'email' parameter in update user request from ${NetHelper.GetEndPointString(req)}.`,
           `We received invalid information from your browser. Please try again.`));
         return;
       }
@@ -220,7 +223,7 @@ const UserUpdate: IRoute = {
       let targetUser: IUser = await UsersById.GetUser(targetUserId);
       
       // get the endpoint structure
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       switch(req.body && req.body.action) {
         // Add permission
@@ -229,7 +232,7 @@ const UserUpdate: IRoute = {
           // validate required access to the user
           if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Create, `user/${targetUserId}`)) {
             next(new RequestError(RequestErrorType.Validation,
-              `Unauthorized access to update user from ${Server.GetIpEndPoint(req)}.`,
+              `Unauthorized access to update user from ${NetHelper.GetEndPointString(req)}.`,
               `Permission denied.`));
             return;
           }
@@ -238,7 +241,7 @@ const UserUpdate: IRoute = {
           let permissionResource: string = req.body && req.body.newPermissionResource;
           if(IsNullOrEmpty(permissionResource)) {
             next(new RequestError(RequestErrorType.Validation,
-              `Invalid permission resource in add permission request from ${Server.GetIpEndPoint(req)}.`,
+              `Invalid permission resource in add permission request from ${NetHelper.GetEndPointString(req)}.`,
               `We received invalid information from your browser. Please try again.`));
             return;
           }
@@ -251,7 +254,7 @@ const UserUpdate: IRoute = {
           }
           if(typeof accessStrs !== 'string' && !Array.isArray(accessStrs)) {
             next(new RequestError(RequestErrorType.Validation,
-              `Invalid access parameter in add permission request from ${Server.GetIpEndPoint(req)}.`,
+              `Invalid access parameter in add permission request from ${NetHelper.GetEndPointString(req)}.`,
               `We received invalid information from your browser. Please try again.`));
             return;
           }
@@ -263,7 +266,7 @@ const UserUpdate: IRoute = {
             let accessType: AccessType = GetEnumValue(AccessType, accessStrs);
             if(!accessType) {
               next(new RequestError(RequestErrorType.Validation,
-                `Invalid access type in add permission request from ${Server.GetIpEndPoint(req)}.`,
+                `Invalid access type in add permission request from ${NetHelper.GetEndPointString(req)}.`,
                 `We received invalid information from your browser. Please try again.`));
               return;
             }
@@ -273,7 +276,7 @@ const UserUpdate: IRoute = {
             
             if(accessStrs.length == 0) {
               next(new RequestError(RequestErrorType.Validation,
-                `Invalid access parameter in add permission request from ${Server.GetIpEndPoint(req)}.`,
+                `Invalid access parameter in add permission request from ${NetHelper.GetEndPointString(req)}.`,
                 `No access specified for new permission. Please select at least one allowed access type.`));
               return;
             }
@@ -283,7 +286,7 @@ const UserUpdate: IRoute = {
               let accessType: AccessType = GetEnumValue(AccessType, accessStr);
               if(!accessType) {
                 next(new RequestError(RequestErrorType.Validation,
-                  `Invalid access type in add permission request from ${Server.GetIpEndPoint(req)}.`,
+                  `Invalid access type in add permission request from ${NetHelper.GetEndPointString(req)}.`,
                   `We received invalid information from your browser. Please try again.`));
                 return;
               }
@@ -312,7 +315,7 @@ const UserUpdate: IRoute = {
           // validate required access to the user
           if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Update, `user/${targetUserId}`)) {
             next(new RequestError(RequestErrorType.Validation,
-              `Unauthorized access to update user from ${Server.GetIpEndPoint(req)}.`,
+              `Unauthorized access to update user from ${NetHelper.GetEndPointString(req)}.`,
               `Permission denied.`));
             return;
           }
@@ -321,7 +324,7 @@ const UserUpdate: IRoute = {
           let state: number = GetEnumIndex(UserState, req.body && req.body.userState);
           if(state < 0) {
             next(new RequestError(RequestErrorType.Validation,
-              `Missing 'state' parameter in update request from ${Server.GetIpEndPoint(req)}`,
+              `Missing 'state' parameter in update request from ${NetHelper.GetEndPointString(req)}`,
               `We received invalid information from your browser. Please try again.`));
             return;
           }
@@ -335,14 +338,14 @@ const UserUpdate: IRoute = {
           } catch(error) {
             
             next(new RequestError(RequestErrorType.Validation,
-              `Invalid metadata parameter in user update request from ${Server.GetIpEndPoint(req)}`,
+              `Invalid metadata parameter in user update request from ${NetHelper.GetEndPointString(req)}`,
               `We received invalid information from your browser. The metadata was invalid.`));
             return;
             
           }
           if(!metadata) {
             next(new RequestError(RequestErrorType.Validation,
-              `Missing 'metadata' parameter in update request from ${Server.GetIpEndPoint(req)}`,
+              `Missing 'metadata' parameter in update request from ${NetHelper.GetEndPointString(req)}`,
               `We received invalid information from your browser. Please try again.`));
             return;
           }
@@ -367,7 +370,7 @@ const UserUpdate: IRoute = {
               let accessType: AccessType = GetEnumValue(AccessType, accessStrs);
               if(!accessType) {
                 next(new RequestError(RequestErrorType.Validation,
-                  `Invalid access type in add permission request from ${Server.GetIpEndPoint(req)}.`,
+                  `Invalid access type in add permission request from ${NetHelper.GetEndPointString(req)}.`,
                   `We received invalid information from your browser. Please try again.`));
                 return;
               }
@@ -384,7 +387,7 @@ const UserUpdate: IRoute = {
                 let accessType: AccessType = GetEnumValue(AccessType, accessStr);
                 if(!accessType) {
                   next(new RequestError(RequestErrorType.Validation,
-                    `Invalid access type in add permission request from ${Server.GetIpEndPoint(req)}.`,
+                    `Invalid access type in add permission request from ${NetHelper.GetEndPointString(req)}.`,
                     `We received invalid information from your browser. Please try again.`));
                   return;
                 }
@@ -412,7 +415,7 @@ const UserUpdate: IRoute = {
           // validate required access to the user
           if(!await PermissionsByUser.HasAccess(user.Id, AccessType.Update, `user/${targetUserId}`)) {
             next(new RequestError(RequestErrorType.Validation,
-              `Unauthorized access to update user from ${Server.GetIpEndPoint(req)}.`,
+              `Unauthorized access to update user from ${NetHelper.GetEndPointString(req)}.`,
               `Permission denied.`));
             return;
           }
@@ -456,7 +459,7 @@ const UserUpdate: IRoute = {
           return;
         default:
           next(new RequestError(RequestErrorType.Validation,
-            `Invalid 'email' parameter in update user request from ${Server.GetIpEndPoint(req)}.`,
+            `Invalid 'email' parameter in update user request from ${NetHelper.GetEndPointString(req)}.`,
             `We received invalid information from your browser. Please try again.`,
             `/login`));
           return;
@@ -471,9 +474,9 @@ const UserUpdate: IRoute = {
 };
 
 /** Get the user create page */
-const UserCreateGet: IRoute = {
+const UserCreateGet: Route = {
   Path: '/users/create',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Create, 'user'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -485,7 +488,7 @@ const UserCreateGet: IRoute = {
       let userStates: { Name: string, Value: UserState }[] = GetEnumValues(UserState);
       
       // clear the end point struct strings
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the dashboard page
       let page: string;
@@ -497,7 +500,7 @@ const UserCreateGet: IRoute = {
           "description": 'Create a new user.',
           "errorStr": endPointStruct.errorStr,
           "infoStr": endPointStruct.infoStr,
-          "menu": await Server.GetMenu(req, res),
+          "menu": await DataHelper.Menu.Get(req, res),
           "email": user.Email,
           "userStates": userStates
         });
@@ -522,9 +525,9 @@ const UserCreateGet: IRoute = {
 };
 
 /** User create post */
-const UserCreatePost: IRoute = {
+const UserCreatePost: Route = {
   Path: '/users/create',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Create, 'user'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -534,7 +537,7 @@ const UserCreatePost: IRoute = {
       try {
         
         // clear the end point struct strings
-        let endPointStruct: any = Server.GetEndpointStruct(req);
+        let endPointStruct: any = Server.GetEndPointStruct(req);
         
         // get the user parameters
         email = req.body && req.body.userEmail || null;
@@ -550,7 +553,7 @@ const UserCreatePost: IRoute = {
           metadata = JSON.parse(metadataStr);
         } catch(error) {
           next(new RequestError(RequestErrorType.Validation,
-            `Error parsing metadata in create new user request from ${Server.GetIpEndPoint(req)}. ${error}`,
+            `Error parsing metadata in create new user request from ${NetHelper.GetEndPointString(req)}. ${error}`,
             `Invalid metadata JSON.`));
           return;
         }
@@ -558,7 +561,7 @@ const UserCreatePost: IRoute = {
         let stateIndex = GetEnumIndex(UserState, stateStr);
         if(stateIndex < 0) {
           next(new RequestError(RequestErrorType.Validation,
-            `Missing user state in create new user request from ${Server.GetIpEndPoint(req)}.`,
+            `Missing user state in create new user request from ${NetHelper.GetEndPointString(req)}.`,
             `We received invalid information from your browser.`));
           return;
         }
@@ -567,7 +570,7 @@ const UserCreatePost: IRoute = {
         if(await UsersByEmail.GetUserId(email)) {
           // the user already exists
           next(new RequestError(RequestErrorType.Validation,
-            `Duplicate user email ${email} detected during create user request from ${Server.GetIpEndPoint(req)}.`,
+            `Duplicate user email ${email} detected during create user request from ${NetHelper.GetEndPointString(req)}.`,
             `User already registered for email ${email}.`));
           return;
         }
@@ -602,9 +605,9 @@ const UserCreatePost: IRoute = {
 };
 
 /** Get the user change password page */
-const UserChangePasswordGet: IRoute = {
+const UserChangePasswordGet: Route = {
   Path: '/user/:email/change_password',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     AuthorizePrivate(AccessType.Update, 'user/${req.params && req.params.email}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -616,7 +619,7 @@ const UserChangePasswordGet: IRoute = {
       let targetUserEmail: string = req.params && req.params.email;
       if(!targetUserEmail) {
         next(new RequestError(RequestErrorType.Validation,
-          `Missing email parameter in change password request from ${Server.GetIpEndPoint(req)}.`,
+          `Missing email parameter in change password request from ${NetHelper.GetEndPointString(req)}.`,
           `Missing email parameter.`));
         return;
       }
@@ -630,7 +633,7 @@ const UserChangePasswordGet: IRoute = {
         let targetUserId: string = await UsersByEmail.GetUserId(targetUserEmail);
         if(!targetUserId) {
           next(new RequestError(RequestErrorType.Validation,
-            `Target user of email ${targetUserEmail} doesn't exist for change password request from ${Server.GetIpEndPoint(req)}.`,
+            `Target user of email ${targetUserEmail} doesn't exist for change password request from ${NetHelper.GetEndPointString(req)}.`,
             `Permission denied.`));
           return;
         }
@@ -640,7 +643,7 @@ const UserChangePasswordGet: IRoute = {
         // get the user
         if(!targetUser) {
           next(new RequestError(RequestErrorType.Validation,
-            `User of id ${targetUserId} and email ${targetUserEmail} missing for change password request from ${Server.GetIpEndPoint(req)}.`,
+            `User of id ${targetUserId} and email ${targetUserEmail} missing for change password request from ${NetHelper.GetEndPointString(req)}.`,
             `Permission denied.`));
           return;
         }
@@ -648,7 +651,7 @@ const UserChangePasswordGet: IRoute = {
       }
       
       // clear the end point struct strings
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the dashboard page
       let page: string;
@@ -662,8 +665,8 @@ const UserChangePasswordGet: IRoute = {
             `Change password for ${targetUser.Email}.`,
           "errorStr": endPointStruct.errorStr,
           "infoStr": endPointStruct.infoStr,
-          "menu": await Server.GetMenu(req, res),
-          "password_regex": Server.Configuration.PasswordRegexStr,
+          "menu": await DataHelper.Menu.Get(req, res),
+          "password_regex": /[A-Za-z0-9@$!%*?&# ()+=_\/\\-]{6,30}/,
           "email": user.Email,
           "targetUser": targetUser
         });
@@ -689,9 +692,9 @@ const UserChangePasswordGet: IRoute = {
 
 
 /** Perform the user change password routine */
-const UserChangePasswordPost: IRoute = {
+const UserChangePasswordPost: Route = {
   Path: '/user/:email/change_password',
-  Method: HttpMethod.Post,
+  Method: Http.Method.Post,
   Effects: [
     AuthorizePrivate(AccessType.Update, 'user/${req.params && req.params.email}'),
     HandleAsyncErrors(async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
@@ -703,7 +706,7 @@ const UserChangePasswordPost: IRoute = {
       let targetUserEmail: string = req.params && req.params.email;
       if(!targetUserEmail) {
         next(new RequestError(RequestErrorType.Validation,
-          `Missing email parameter in change password request from ${Server.GetIpEndPoint(req)}.`,
+          `Missing email parameter in change password request from ${NetHelper.GetEndPointString(req)}.`,
           `Missing email parameter.`));
         return;
       }
@@ -717,7 +720,7 @@ const UserChangePasswordPost: IRoute = {
         let targetUserId: string = await UsersByEmail.GetUserId(targetUserEmail);
         if(!targetUserId) {
           next(new RequestError(RequestErrorType.Validation,
-            `Target user of email ${targetUserEmail} doesn't exist for change password request from ${Server.GetIpEndPoint(req)}.`,
+            `Target user of email ${targetUserEmail} doesn't exist for change password request from ${NetHelper.GetEndPointString(req)}.`,
             `Permission denied.`));
           return;
         }
@@ -727,7 +730,7 @@ const UserChangePasswordPost: IRoute = {
         // get the user
         if(!targetUser) {
           next(new RequestError(RequestErrorType.Validation,
-            `User of id ${targetUserId} and email ${targetUserEmail} missing for change password request from ${Server.GetIpEndPoint(req)}.`,
+            `User of id ${targetUserId} and email ${targetUserEmail} missing for change password request from ${NetHelper.GetEndPointString(req)}.`,
             `Permission denied.`));
           return;
         }
@@ -735,7 +738,7 @@ const UserChangePasswordPost: IRoute = {
       }
       
       // clear the end point struct strings
-      let endPointStruct: any = Server.GetEndpointStruct(req);
+      let endPointStruct: any = Server.GetEndPointStruct(req);
       
       // get the password parameters
       let password1: string = req.body && req.body.password_1;
@@ -744,10 +747,10 @@ const UserChangePasswordPost: IRoute = {
       // validate the passwords
       if(typeof password1 !== 'string' ||
          typeof password2 !== 'string' ||
-         !Server.PasswordRegex.test(password1)) {
+         !/[A-Za-z0-9@$!%*?&# ()+=_\/\\-]{6,30}/.test(password1)) {
         // invalid form data
         next(new RequestError(RequestErrorType.Validation,
-          `Invalid form submission from ${Server.GetIpEndPoint(req)}`,
+          `Invalid form submission from ${NetHelper.GetEndPointString(req)}`,
           'We received invalid information from your browser. Please try again.'));
         return;
       }
@@ -779,7 +782,7 @@ const UserChangePasswordPost: IRoute = {
 };
 
 /** Collection of 'users' routes */
-export const Users: IRoute[] = [
+export const Users: Route[] = [
   UserListGet,
   UserGet,
   UserUpdate,

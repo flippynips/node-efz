@@ -13,6 +13,7 @@ import { ISession, IUser, UserState } from '../../Data/Accounts/Index';
 import { Log, Crypto, Server, Time } from '../../Managers/Index';
 import { RequestError, RequestErrorType } from '../../Tools/Errors/Index';
 import { AccessType, IsNullOrEmpty } from '../../Tools/Index';
+import { NetHelper } from '../Index';
 
 /** Authorize request access to the specified resource and access type.
  *  Sets res.locals.Session, res.locals.User and res.locals.Permissions.
@@ -29,7 +30,7 @@ export const AuthorizePrivate = (access: AccessType, resource: string): express.
     let sessionId = req.cookies && req.cookies[Server.Configuration.SessionCookieName];
     let session: ISession;
     
-    let address: string = Server.GetIpEndPoint(req);
+    let address: string = NetHelper.GetEndPointString(req);
     
     // does a session exist for the request?
     if(sessionId == null || sessionId == '') {
@@ -56,7 +57,7 @@ export const AuthorizePrivate = (access: AccessType, resource: string): express.
     
     // validate the session
     if(!session || session.TimeExpired < now) {
-      let endpointStruct = Server.GetEndpointStruct(req);
+      let endpointStruct = Server.GetEndPointStruct(req);
       endpointStruct.errorStr = 'Your session expired.';
       SetCookieAndRedirect(req, res, next);
       return;
@@ -97,7 +98,7 @@ export const AuthorizePrivate = (access: AccessType, resource: string): express.
       resource = EvaluateResource(resource, req, res, session, user);
       if(resource == null) {
         next(new RequestError(RequestErrorType.Authentication,
-          `Unsafe characters found in request parameters or query from ${Server.GetIpEndPoint(req)}.`,
+          `Unsafe characters found in request parameters or query from ${NetHelper.GetEndPointString(req)}.`,
           'Invalid permissions.'));
         return;
       }
@@ -154,7 +155,7 @@ export const AuthorizePublic = (type: AccessType, resource: string): express.Req
     let session: ISession;
     
     // get the remote address
-    var address: string = Server.GetIpEndPoint(req);
+    var address: string = NetHelper.GetEndPointString(req);
     
     // does a session exist for the request?
     if(sessionId == null || sessionId == '') {
@@ -168,7 +169,7 @@ export const AuthorizePublic = (type: AccessType, resource: string): express.Req
       sessionId = Crypto.DecryptWithPassword(sessionId, Server.Configuration.CookieEncryptionPassword);
     } catch(error) {
       // set the error string
-      let endpointStruct = Server.GetEndpointStruct(req);
+      let endpointStruct = Server.GetEndPointStruct(req);
       endpointStruct.errorStr = 'Your session was invalidated.';
       // set cookie and redirect
       await SetCookieAndRedirect(req, res, next);
@@ -184,7 +185,7 @@ export const AuthorizePublic = (type: AccessType, resource: string): express.Req
     // validate the session
     if(!session || session.TimeExpired < now) {
       // set the error string
-      let endpointStruct = Server.GetEndpointStruct(req);
+      let endpointStruct = Server.GetEndPointStruct(req);
       endpointStruct.errorStr = 'Your session expired.';
       // set cookie and redirect
       SetCookieAndRedirect(req, res, next);
@@ -222,7 +223,7 @@ export const AuthorizePublic = (type: AccessType, resource: string): express.Req
       resource = EvaluateResource(resource, req, res, session, null);
       if(resource == null) {
         next(new RequestError(RequestErrorType.Authentication,
-          `Unsafe characters found in request parameters or query from ${Server.GetIpEndPoint(req)}.`,
+          `Unsafe characters found in request parameters or query from ${NetHelper.GetEndPointString(req)}.`,
           'Invalid permissions.'));
         return;
       }
@@ -269,7 +270,7 @@ export const AuthorizePublic = (type: AccessType, resource: string): express.Req
 const SetCookieAndRedirect = async (req: express.Request, res: express.Response, next: express.NextFunction): Promise<void> => {
   
   // check the number of cookie attempts
-  let endPointStruct: any = Server.GetEndpointStruct(req);
+  let endPointStruct: any = Server.GetEndPointStruct(req);
   if(endPointStruct.CookieAttempts == null) endPointStruct.CookieAttempts = 0;
   ++endPointStruct.CookieAttempts;
   const maxCookieAttempts: number = 3;
@@ -287,12 +288,12 @@ const SetCookieAndRedirect = async (req: express.Request, res: express.Response,
     // try create a session
     session = await SessionsByCookie.CreateSession();
     
-    Log.Verbose(`Created new session for '${Server.GetIpEndPoint(req)}'.`);
+    Log.Verbose(`Created new session for '${NetHelper.GetEndPointString(req)}'.`);
     
   } catch(error) {
     
     next(new RequestError(RequestErrorType.Server,
-      'Could not create a new session.',
+      `Could not create a new session. ${error}`,
       'Server could not create a new session for you.'));
     
     return;

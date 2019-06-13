@@ -7,20 +7,21 @@
 
 import * as express from 'express';
 
-import { HttpMethod, IsNullOrEmpty } from '../../Tools/Index';
+import { Http, IsNullOrEmpty } from '../../Tools/Index';
 import { Resources, Server } from '../../Managers/Index';
-import { IRoute } from '../IRoute';
+import { Route } from '../Route';
 import { HandleAsyncErrors } from '../Middlewares/Index';
+import { DataHelper } from '../Index';
 
 /** Error Page */
-const ErrorGet: IRoute = {
+const ErrorGet: Route = {
   Path: '/error',
-  Method: HttpMethod.Get,
+  Method: Http.Method.Get,
   Effects: [
     HandleAsyncErrors(async (req: express.Request, res: express.Response): Promise<void> => {
       
       // get the error to display
-      var endPointStruct: any = Server.GetEndpointStruct(req);
+      var endPointStruct: any = Server.GetEndPointStruct(req);
       
       // this is undesirable but can happen
       if(!endPointStruct || IsNullOrEmpty(endPointStruct.ErrorStr)) {
@@ -35,7 +36,7 @@ const ErrorGet: IRoute = {
           "title": 'Uh Oh',
           "datetime": new Date().toDateString(),
           "description": '“The trouble with programmers is that you can never tell what a programmer is doing until it’s too late.” Seymour Cray',
-          "menu": Server.GetMenu(req, res),
+          "menu": DataHelper.Menu.Get(req, res),
           "error": endPointStruct.ErrorStr
         });
       
@@ -53,4 +54,4 @@ const ErrorGet: IRoute = {
 };
 
 /** Collection of 'error' routes */
-export const Errors: IRoute[] = [ ErrorGet ];
+export const Errors: Route[] = [ ErrorGet ];
