@@ -33,7 +33,7 @@
     "node-forge": "^0.7.6",
     "nodemailer": "^4.6.8",
     "path": "^0.12.7",
-    "pug": "^2.0.3",
+    "pug": "^3.0.1",
     "rxjs": "^6.2.2",
     "source-map-support": "^0.5.12",
     "typescript": "^3.0.1",
